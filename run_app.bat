@@ -12,6 +12,7 @@ pause
 exit /b
 
 :START_APP
-call venv\Scripts\activate.bat
-streamlit run app.py
+set "SCRIPT_DIR=%~dp0"
+call "%SCRIPT_DIR%venv\Scripts\activate.bat"
+"%VIRTUAL_ENV%\Scripts\python.exe" -m streamlit run app.py
 pause
