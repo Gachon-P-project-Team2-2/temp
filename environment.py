@@ -55,26 +55,49 @@ class SyntheticEnvironment:
         self.obstacles_geo = []
 
     def generate_traffic(self, num_hotspots=5, max_intensity=100, spread_m=500, base_intensity=10):
-        # 트래픽 분포 생성 (기본 트래픽 + 핫스팟)
-        # 1. Base Traffic 생성: 랜덤값 추가. 
-        noise = np.random.uniform(0, 20, (self.rows, self.cols)) # 0~5 사이 랜덤 노이즈
+        """레거시 multi_hotspot 생성 (m 단위 spread). 기존 동작 유지."""
+        # 1. Base Traffic 생성: 랜덤값 추가.
+        noise = np.random.uniform(0, 20, (self.rows, self.cols))
         self.traffic_map = np.full((self.rows, self.cols), base_intensity) + noise
-        
+
         # 2. 핫스팟 추가
         for _ in range(num_hotspots):
             h_x = np.random.choice(self.x_range)
             h_y = np.random.choice(self.y_range)
-            
+
             pos = np.dstack((self.x_grid, self.y_grid))
-            
+
             safe_spread = max(spread_m, 10)
             rv = multivariate_normal([h_x, h_y], [[safe_spread**2, 0], [0, safe_spread**2]])
-            
+
             pdf_values = rv.pdf(pos)
-            
+
             if pdf_values.max() > 0:
                 self.traffic_map += pdf_values * (max_intensity / pdf_values.max())
 
+        return self.traffic_map
+
+    def generate_traffic_pattern(self, pattern: str, max_intensity: float = 100.0,
+                                  base_intensity: float = 10.0, params: dict | None = None,
+                                  rng: 'np.random.Generator | None' = None):
+        """bs_opt에서 포팅된 8종 패턴 생성기. patterns.generate_pattern 사용.
+
+        patterns.py가 [0, 1] 정규화된 맵을 반환하면, 여기서 base_intensity + max_intensity·t로
+        기존 스케일과 호환되게 변환한다.
+
+        Args:
+            pattern: patterns.PATTERN_CHOICES 중 하나
+            max_intensity: 정규화된 최댓값이 가질 스케일
+            base_intensity: 오프셋 (모든 셀에 더해짐)
+            params: 패턴별 세부 하이퍼파라미터 (patterns.py 참조)
+            rng: numpy Generator (None이면 전역 random 사용)
+        """
+        from patterns import generate_pattern
+        if rng is None:
+            rng = np.random.default_rng()
+        normalized = generate_pattern(self.rows, self.cols, pattern=pattern,
+                                      rng=rng, params=params)
+        self.traffic_map = base_intensity + normalized * max_intensity
         return self.traffic_map
 
     def generate_obstacles(self, num_obstacles=5, pattern='random'):

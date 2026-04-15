@@ -13,6 +13,7 @@ from environment import SyntheticEnvironment
 from optimizers import (
     REGISTRY, get_optimizer, ProblemInput, convert_to_geo, HyperParam,
 )
+from patterns import PATTERN_CHOICES
 
 st.set_page_config(layout="wide", page_title="Simulator")
 
@@ -57,9 +58,23 @@ with st.sidebar:
     resolution_m = st.number_input("격자 크기 (m)", 50, 500, 100, step=10)
 
     with st.expander("트래픽 세부 설정"):
-        base_intensity = st.slider("기초 트래픽량", 0, 50, 10)
-        num_hotspots = st.slider("핫스팟 개수", 1, 10, 5)
-        spread_m = st.slider("핫스팟 확산 반경 (m)", 100, 1000, 300, step=50)
+        traffic_pattern = st.selectbox(
+            "트래픽 패턴",
+            PATTERN_CHOICES,
+            index=0,
+            help="multi_hotspot=기존(레거시, m 단위 spread). 나머지는 bs_opt 포팅 패턴.",
+        )
+        base_intensity = st.slider("기초 트래픽량 (base)", 0, 50, 10)
+        max_intensity = st.slider("최대 트래픽량 (max)", 50, 500, 100, step=10,
+                                   help="정규화된 패턴에 곱해지는 스케일 (multi_hotspot 제외)")
+
+        # 레거시 multi_hotspot은 m 단위 spread_m을 받음 (기존 파라미터 유지)
+        if traffic_pattern == "multi_hotspot":
+            num_hotspots = st.slider("핫스팟 개수", 1, 10, 5)
+            spread_m = st.slider("핫스팟 확산 반경 (m)", 100, 1000, 300, step=50)
+        else:
+            num_hotspots = 5  # 사용 안 함
+            spread_m = 300
 
     with st.expander("장애물 세부 설정"):
         obstacle_pattern = st.selectbox("장애물 패턴", ["mixed", "random", "circle", "strip", "grid"], index=0)
@@ -368,7 +383,17 @@ if create_clicked:
             height_km=height_km,
             resolution_m=resolution_m
         )
-        env.generate_traffic(num_hotspots=num_hotspots, spread_m=spread_m, base_intensity=base_intensity)
+        if traffic_pattern == "multi_hotspot":
+            # 레거시 경로: m 단위 spread, max_intensity=100 고정
+            env.generate_traffic(num_hotspots=num_hotspots, spread_m=spread_m,
+                                 base_intensity=base_intensity,
+                                 max_intensity=max_intensity)
+        else:
+            env.generate_traffic_pattern(
+                pattern=traffic_pattern,
+                max_intensity=max_intensity,
+                base_intensity=base_intensity,
+            )
         env.generate_obstacles(num_obstacles=num_obstacles, pattern=obstacle_pattern)
         env.apply_masking()
 
