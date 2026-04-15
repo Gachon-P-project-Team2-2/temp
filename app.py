@@ -62,7 +62,25 @@ with st.sidebar:
         capacity = st.number_input("최대 용량 (Traffic)", 500, 1000000000, 2000, step=100)
     
     algo = st.selectbox("알고리즘 선택", ["K-Means", "Random Walk", "Simulated Annealing", "Tabu Search"])
-    
+
+    hyperparams = {}
+    with st.expander("하이퍼파라미터", expanded=False):
+        if algo == "K-Means":
+            hyperparams['n_init'] = st.slider("n_init (초기화 횟수)", 1, 50, 10)
+            hyperparams['random_state'] = st.number_input("random_state (시드, -1=랜덤)", -1, 99999, 42)
+        elif algo == "Random Walk":
+            hyperparams['iterations'] = st.slider("iterations (반복 수)", 100, 10000, 1000, step=100)
+            hyperparams['step_size'] = st.slider("step_size (이동 크기, m)", 1.0, 500.0, 50.0, step=1.0)
+        elif algo == "Simulated Annealing":
+            hyperparams['iterations'] = st.slider("iterations (반복 수)", 100, 10000, 1000, step=100)
+            hyperparams['initial_temp'] = st.slider("initial_temp (초기 온도)", 1.0, 1000.0, 100.0, step=1.0)
+            hyperparams['cooling_rate'] = st.slider("cooling_rate (냉각률)", 0.80, 0.999, 0.99, step=0.001, format="%.3f")
+            hyperparams['step_size'] = st.slider("step_size (이동 크기, m)", 1.0, 500.0, 50.0, step=1.0)
+        elif algo == "Tabu Search":
+            hyperparams['iterations'] = st.slider("iterations (반복 수)", 50, 5000, 500, step=50)
+            hyperparams['step_size'] = st.slider("step_size (이동 크기, m)", 1.0, 500.0, 50.0, step=1.0)
+            hyperparams['tabu_tenure'] = st.slider("tabu_tenure (금기 기간)", 1, 100, 10)
+
     opt_mode = st.radio("기지국 개수 설정", ["고정 개수 (Fixed)", "범위 탐색 (Range)"])
     
     if opt_mode == "고정 개수 (Fixed)":
@@ -340,10 +358,10 @@ if optimize_clicked:
         progress_bar = st.progress(0)
         
         for idx, k in enumerate(k_list):
-            if algo == "K-Means": centers, score = optimizer.run_kmeans(k)
-            elif algo == "Random Walk": centers, score = optimizer.run_random_walk(k)
-            elif algo == "Simulated Annealing": centers, score = optimizer.run_simulated_annealing(k)
-            elif algo == "Tabu Search": centers, score = optimizer.run_tabu_search(k)
+            if algo == "K-Means": centers, score = optimizer.run_kmeans(k, **hyperparams)
+            elif algo == "Random Walk": centers, score = optimizer.run_random_walk(k, **hyperparams)
+            elif algo == "Simulated Annealing": centers, score = optimizer.run_simulated_annealing(k, **hyperparams)
+            elif algo == "Tabu Search": centers, score = optimizer.run_tabu_search(k, **hyperparams)
             
             stats = optimizer.get_stats(centers)
             stats['n_stations'] = k 

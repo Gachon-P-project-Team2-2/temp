@@ -111,14 +111,10 @@ class BaseStationOptimizer:
             
         return np.array(centers_geo)
 
-    def run_kmeans(self, n_stations):
-        # 가장 가까운 기지국에 할당 -> 부하 계산 -> 점수 계산
-        # 초기화: n_init=10, random_state=42
-        # 학습: fit(self.X, sample_weight=self.weights)
-        # 클러스터 센터: cluster_centers_
-        # 점수: _calculate_score(centers)
-        # 반환: centers, score
-        kmeans = KMeans(n_clusters=n_stations, n_init=10, random_state=42)
+    def run_kmeans(self, n_stations, n_init=10, random_state=42):
+        # random_state=-1 이면 매 실행마다 다른 결과 (시드 미고정)
+        rs = None if random_state == -1 else random_state
+        kmeans = KMeans(n_clusters=n_stations, n_init=n_init, random_state=rs)
         kmeans.fit(self.X, sample_weight=self.weights)
         centers = kmeans.cluster_centers_
         score = self._calculate_score(centers)

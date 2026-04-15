@@ -5,7 +5,7 @@ pandas
 shapely
 scipy
 matplotlib
-sklearn
+scikit-learn
 folium 
 streamlit-folium
 geopy
