@@ -2,8 +2,10 @@ import streamlit as st
 import numpy as np
 import pandas as pd
 import io
+import json
 import folium
 import time
+from branca.element import MacroElement, Template
 from folium import GeoJson
 from streamlit_folium import st_folium
 from geopy.distance import geodesic
@@ -12,12 +14,25 @@ plt.rcParams['font.family'] = 'Malgun Gothic'
 plt.rcParams['axes.unicode_minus'] = False
 
 from environment import SyntheticEnvironment
+from obstacle_sources import (
+    filter_polygons,
+    geojson_to_polygons,
+    load_osm_polygons_with_cache,
+)
 from optimizers import (
     REGISTRY, get_optimizer, ProblemInput, convert_to_geo, HyperParam,
 )
 from patterns import PATTERN_CHOICES
 
 st.set_page_config(layout="wide", page_title="Simulator")
+
+OSM_OBSTACLE_TYPE_LABELS = ["건물", "수역/물길", "도로"]
+OSM_OBSTACLE_TYPE_VALUES = {
+    "건물": "building",
+    "수역/물길": ("water", "waterway"),
+    "도로": "road",
+}
+OSM_OBJECT_USAGE_MODES = ["장애물로 사용", "기지국 후보로 사용"]
 
 if 'map_view' not in st.session_state:
     st.session_state['map_view'] = {
@@ -53,6 +68,319 @@ def render_hyperparam_widget(p: HyperParam):
     raise ValueError(f"Unknown HyperParam.kind: {p.kind}")
 
 
+def clear_optimization_state():
+    for k in ('opt_results', 'opt_stats', 'range_results'):
+        if k in st.session_state:
+            del st.session_state[k]
+
+
+def load_map_obstacles(env: SyntheticEnvironment, source: str, uploaded_geojson,
+                       min_area_m2: float, max_obstacles: int | None,
+                       osm_obstacle_types: list[str] | None = None,
+                       osm_object_mode: str = OSM_OBJECT_USAGE_MODES[0]):
+    """OSM/GeoJSON 데이터를 로컬 좌표계 객체로 가져온다.
+
+    - 장애물 모드: polygon 목록을 반환
+    - 후보 모드: 각 객체의 대표점 좌표 목록을 반환
+    """
+    if source == "OSM 지도 데이터":
+        if not osm_obstacle_types:
+            raise ValueError("OSM 오브젝트 종류를 하나 이상 선택해주세요.")
+        try:
+            geo_polygons, raw_count = load_osm_polygons_with_cache(
+                env.lat_min,
+                env.lon_min,
+                env.lat_max,
+                env.lon_max,
+                obstacle_types=osm_obstacle_types,
+            )
+        except TypeError as exc:
+            # 하위/구버전 함수 호환: obstacle_types 인자가 없는 경우 기존 인터페이스로 fallback
+            if "unexpected keyword argument 'obstacle_types'" not in str(exc):
+                raise
+            geo_polygons, raw_count = load_osm_polygons_with_cache(
+                env.lat_min,
+                env.lon_min,
+                env.lat_max,
+                env.lon_max,
+            )
+    elif source == "GeoJSON 업로드":
+        if uploaded_geojson is None:
+            raise ValueError("GeoJSON 파일을 먼저 업로드해주세요.")
+        geo_polygons = geojson_to_polygons(uploaded_geojson.getvalue())
+        raw_count = len(geo_polygons)
+    else:
+        return [], 0
+
+    local_polygons = []
+    for polygon in geo_polygons:
+        local_polygons.extend(env.geo_to_local_polygons(polygon))
+    if osm_object_mode == "기지국 후보로 사용":
+        candidate_points = [
+            poly.representative_point().coords[0]
+            for poly in local_polygons
+            if poly.area > 0
+        ]
+        return candidate_points, raw_count
+
+    return filter_polygons(local_polygons, min_area_m2, max_obstacles), raw_count
+
+
+def apply_obstacle_source(env: SyntheticEnvironment, source: str, uploaded_geojson,
+                          min_area_m2: float, max_obstacles: int | None,
+                          obstacle_pattern: str, num_obstacles: int,
+                          osm_obstacle_types: list[str] | None = None,
+                          osm_object_mode: str = OSM_OBJECT_USAGE_MODES[0],
+                          append: bool = False):
+    def apply_candidate_mode(points):
+        if append:
+            env.append_station_candidate_points(points)
+        else:
+            env.set_station_candidate_points(points)
+        env.obstacles = []
+        env.obstacles_geo = []
+        env.remask_traffic()
+
+    if source == "합성":
+        if osm_object_mode == "기지국 후보로 사용":
+            generated = SyntheticEnvironment(
+                center_lat=env.center_lat,
+                center_lon=env.center_lon,
+                width_km=env.width_km,
+                height_km=env.height_km,
+                resolution_m=env.resolution_m,
+            )
+            generated.generate_obstacles(num_obstacles=num_obstacles, pattern=obstacle_pattern)
+            candidate_points = [
+                poly.representative_point().coords[0]
+                for poly in generated.obstacles
+                if poly.area > 0
+            ]
+            apply_candidate_mode(candidate_points)
+            return len(candidate_points), num_obstacles
+
+        if append:
+            before = len(env.obstacles)
+            generated = SyntheticEnvironment(
+                center_lat=env.center_lat,
+                center_lon=env.center_lon,
+                width_km=env.width_km,
+                height_km=env.height_km,
+                resolution_m=env.resolution_m,
+            )
+            generated.generate_obstacles(num_obstacles=num_obstacles, pattern=obstacle_pattern)
+            env.append_obstacles(generated.obstacles)
+            return len(env.obstacles) - before, num_obstacles
+        env.generate_obstacles(num_obstacles=num_obstacles, pattern=obstacle_pattern)
+        env.remask_traffic()
+        return len(env.obstacles), num_obstacles
+
+    polygons, raw_count = load_map_obstacles(
+        env,
+        source,
+        uploaded_geojson,
+        min_area_m2,
+        max_obstacles,
+        osm_obstacle_types=osm_obstacle_types,
+        osm_object_mode=osm_object_mode,
+    )
+    if osm_object_mode == "기지국 후보로 사용":
+        apply_candidate_mode(polygons)
+        return len(env.station_candidate_points), raw_count
+
+    if append:
+        env.append_obstacles(polygons)
+    else:
+        env.replace_obstacles(polygons)
+        env.clear_station_candidate_points()
+    return len(polygons), raw_count
+
+
+def add_dynamic_traffic_playback(map_obj, env: SyntheticEnvironment, df: pd.DataFrame,
+                                 interval_s: float, traffic_series: np.ndarray | None = None):
+    """Folium 지도 안에서 GeoJSON layer style만 갱신하는 JS 재생 컨트롤 추가."""
+    cell_indices = df.index.to_numpy(dtype=int)
+    if traffic_series is None:
+        flat_series = env.traffic_series.reshape(env.traffic_series.shape[0], -1)
+    else:
+        flat_series = traffic_series.reshape(traffic_series.shape[0], -1)
+    frame_values = np.rint(flat_series[:, cell_indices]).astype(int).tolist()
+    frames_json = json.dumps(frame_values, separators=(",", ":"))
+    map_name = map_obj.get_name()
+    control_id = f"{map_name}_traffic_playback"
+    initial_frame = int(getattr(env, 'dynamic_frame_index', 0))
+    interval_ms = max(100, int(float(interval_s) * 1000))
+
+    js = f"""
+    (function() {{
+        var frames = {frames_json};
+        var controlId = "{control_id}";
+        var currentFrame = {initial_frame};
+        var timer = null;
+        var cells = [];
+
+        function opacityForTraffic(value) {{
+            return Math.max(0.05, Math.min(value / 150.0, 0.85));
+        }}
+
+        function updateFrame(frameIndex) {{
+            if (!frames.length || !cells.length) {{
+                return;
+            }}
+            currentFrame = (frameIndex + frames.length) % frames.length;
+            var frame = frames[currentFrame];
+            for (var i = 0; i < cells.length; i++) {{
+                var value = frame[i] || 0;
+                var isObstacle = false;
+                if (cells[i].feature && cells[i].feature.properties &&
+                        Object.prototype.hasOwnProperty.call(cells[i].feature.properties, "is_obstacle")) {{
+                    isObstacle = Boolean(cells[i].feature.properties.is_obstacle);
+                }}
+                if (isObstacle) {{
+                    if (cells[i].setStyle) {{
+                        cells[i].setStyle({{
+                            fillColor: "#808080",
+                            fillOpacity: 0.65
+                        }});
+                    }}
+                    if (cells[i].feature && cells[i].feature.properties) {{
+                        cells[i].feature.properties.traffic = 0;
+                        cells[i].feature.properties.status = "Obstacle";
+                    }}
+                    continue;
+                }}
+                if (cells[i].setStyle) {{
+                    cells[i].setStyle({{
+                        fillColor: "#ff0000",
+                        fillOpacity: opacityForTraffic(value)
+                    }});
+                }}
+                if (cells[i].feature && cells[i].feature.properties) {{
+                    cells[i].feature.properties.traffic = value;
+                    cells[i].feature.properties.status = "Playback";
+                }}
+            }}
+            var frameLabel = document.getElementById(controlId + "-frame");
+            if (frameLabel) {{
+                frameLabel.textContent = "Traffic Frame " + currentFrame + " / " + (frames.length - 1);
+            }}
+        }}
+
+        function findLeafletMap() {{
+            if (typeof L === "undefined") {{
+                return null;
+            }}
+            var keys = Object.keys(window);
+            for (var i = 0; i < keys.length; i++) {{
+                try {{
+                    if (window[keys[i]] instanceof L.Map) {{
+                        return window[keys[i]];
+                    }}
+                }} catch (e) {{}}
+            }}
+            return null;
+        }}
+
+        function findTrafficLayer() {{
+            if (typeof L === "undefined") {{
+                return null;
+            }}
+            var keys = Object.keys(window);
+            for (var i = 0; i < keys.length; i++) {{
+                var candidate = window[keys[i]];
+                try {{
+                    if (!(candidate instanceof L.LayerGroup) || typeof candidate.eachLayer !== "function") {{
+                        continue;
+                    }}
+                    var hasTrafficFeature = false;
+                    candidate.eachLayer(function(layer) {{
+                        if (layer.feature && layer.feature.properties &&
+                                Object.prototype.hasOwnProperty.call(layer.feature.properties, "traffic")) {{
+                            hasTrafficFeature = true;
+                        }}
+                    }});
+                    if (hasTrafficFeature) {{
+                        return candidate;
+                    }}
+                }} catch (e) {{}}
+            }}
+            return null;
+        }}
+
+        function initPlayback(attempt) {{
+            var map = findLeafletMap();
+            var trafficLayer = findTrafficLayer();
+            if (!map || !trafficLayer) {{
+                if (attempt < 50) {{
+                    window.setTimeout(function() {{
+                        initPlayback(attempt + 1);
+                    }}, 100);
+                }}
+                return;
+            }}
+
+            trafficLayer.eachLayer(function(layer) {{
+                cells.push(layer);
+            }});
+
+            var TrafficPlaybackControl = L.Control.extend({{
+                options: {{position: "topleft"}},
+                onAdd: function() {{
+                    var container = L.DomUtil.create("div", "traffic-playback-control");
+                    container.id = controlId;
+                    container.style.cssText = [
+                        "background: rgba(20,20,20,0.88)",
+                        "color: white",
+                        "padding: 8px 10px",
+                        "border-radius: 4px",
+                        "box-shadow: 0 1px 5px rgba(0,0,0,0.45)",
+                        "font-size: 13px",
+                        "line-height: 1.35"
+                    ].join(";");
+                    container.innerHTML =
+                        '<div id="' + controlId + '-frame" style="font-weight: 700; margin-bottom: 6px;">' +
+                        'Traffic Frame ' + currentFrame + ' / ' + (frames.length - 1) +
+                        '</div>' +
+                        '<button id="' + controlId + '-play" type="button" style="margin-right: 4px;">지도 재생</button>' +
+                        '<button id="' + controlId + '-stop" type="button">정지</button>';
+                    L.DomEvent.disableClickPropagation(container);
+                    L.DomEvent.disableScrollPropagation(container);
+                    return container;
+                }}
+            }});
+
+            map.addControl(new TrafficPlaybackControl());
+
+            document.getElementById(controlId + "-play").onclick = function() {{
+                if (timer !== null) {{
+                    return;
+                }}
+                timer = window.setInterval(function() {{
+                    updateFrame(currentFrame + 1);
+                }}, {interval_ms});
+            }};
+
+            document.getElementById(controlId + "-stop").onclick = function() {{
+                if (timer !== null) {{
+                    window.clearInterval(timer);
+                    timer = null;
+                }}
+            }};
+
+            updateFrame(currentFrame);
+        }}
+
+        initPlayback(0);
+    }})();
+    """
+    playback_element = MacroElement()
+    playback_element._name = "DynamicTrafficPlayback"
+    playback_element._template = Template(
+        "{% macro script(this, kwargs) %}" + js + "{% endmacro %}"
+    )
+    map_obj.add_child(playback_element)
+
+
 with st.sidebar:
     st.title("시뮬레이터 제어")
 
@@ -78,16 +406,163 @@ with st.sidebar:
             num_hotspots = 5  # 사용 안 함
             spread_m = 300
 
-    with st.expander("장애물 세부 설정"):
-        obstacle_pattern = st.selectbox("장애물 패턴", ["mixed", "random", "circle", "strip", "grid"], index=0)
-        num_obstacles = st.slider("장애물 개수", 0, 10, 3)
+        dynamic_traffic = st.checkbox("동적 트래픽 생성", value=False)
+        dynamic_time_steps = 12
+        dynamic_variation = 0.25
+        dynamic_drift_m = 300
+        if dynamic_traffic:
+            dynamic_time_steps = st.slider("시간 단계 수", 2, 48, 12)
+            dynamic_variation = st.slider("시간 변화 강도", 0.0, 1.0, 0.25, step=0.05)
+            dynamic_drift_m = st.slider("공간 이동 범위 (m)", 0, 2000, 300, step=50)
+
+    with st.expander("오브젝트 세부 설정"):
+        osm_object_mode = OSM_OBJECT_USAGE_MODES[0]
+        osm_object_mode = st.radio(
+            "오브젝트 사용 방식",
+            OSM_OBJECT_USAGE_MODES,
+            horizontal=True,
+        )
+
+        obstacle_source = st.selectbox(
+            "오브젝트 소스",
+            ["합성", "OSM 지도 데이터", "GeoJSON 업로드"],
+            index=0,
+        )
+        obstacle_pattern = "mixed"
+        num_obstacles = 3
+        min_obstacle_area_m2 = 0.0
+        max_map_obstacles = None
+        uploaded_geojson = None
+        osm_obstacle_types = None
+        
+        
+
+        if obstacle_source == "합성":
+            obstacle_pattern = st.selectbox("오브젝트 생성 패턴", ["mixed", "random", "circle", "strip", "grid"], index=0)
+            num_obstacles = st.slider("오브젝트 개수", 0, 10, 3)
+        elif obstacle_source == "OSM 지도 데이터":
+            st.write("OSM 오브젝트 타입")
+            selected_osm_types = []
+            for osm_type in OSM_OBSTACLE_TYPE_LABELS:
+                if st.checkbox(
+                    osm_type,
+                    value=True,
+                    key=f"osm_object_type_{osm_type.replace('/', '_')}",
+                ):
+                    selected_osm_types.append(osm_type)
+            if not selected_osm_types:
+                st.warning("최소 하나 이상의 OSM 오브젝트 타입을 선택해야 합니다.")
+            osm_obstacle_types = []
+            for osm_type in selected_osm_types:
+                value = OSM_OBSTACLE_TYPE_VALUES[osm_type]
+                if isinstance(value, tuple):
+                    osm_obstacle_types.extend(value)
+                else:
+                    osm_obstacle_types.append(value)
+            # 수역/물길은 하나의 체크박스로 묶어도 내부적으로는 물 경계 요소를 함께 조회한다.
+            osm_obstacle_types = list(dict.fromkeys(osm_obstacle_types))
+        else:
+            uploaded_geojson = st.file_uploader("오브젝트 GeoJSON", type=["json", "geojson"])
+            if osm_object_mode == "장애물로 사용":
+                min_obstacle_area_m2 = st.slider("최소 오브젝트 면적 (m²)", 0, 5000, 100, step=100)
+                max_map_obstacles = st.slider("최대 오브젝트 개수", 1, 500, 100, step=10)
 
     create_clicked = st.button("가상 데이터 생성", type="primary")
 
     if 'env' in st.session_state:
         st.markdown("---")
-        st.header("데이터 내보내기")
         env = st.session_state['env']
+
+        if getattr(env, 'traffic_series', None) is not None and env.traffic_series.shape[0] > 1:
+            st.header("동적 트래픽")
+            current_frame = int(getattr(env, 'dynamic_frame_index', 0))
+            selected_frame = st.slider(
+                "트래픽 시간 프레임",
+                0,
+                env.traffic_series.shape[0] - 1,
+                current_frame,
+            )
+            if selected_frame != current_frame:
+                env.set_traffic_frame(selected_frame)
+                st.session_state['env'] = env
+                clear_optimization_state()
+                current_frame = selected_frame
+
+            st.session_state['traffic_js_interval'] = st.slider(
+                "브라우저 재생 간격 (초)",
+                0.2,
+                2.0,
+                float(st.session_state.get('traffic_js_interval', 0.5)),
+                step=0.1,
+            )
+
+            st.caption(f"현재 지도 프레임: {current_frame} / {env.traffic_series.shape[0] - 1}")
+            st.caption("재생/정지는 지도 왼쪽 위 컨트롤에서 실행됩니다.")
+
+            st.markdown("---")
+
+        with st.expander("지도 오브젝트 관리"):
+            candidate_count = 0 if env.station_candidate_points is None else len(env.station_candidate_points)
+            st.caption(f"현재 오브젝트: {len(env.obstacles)}개")
+            if candidate_count:
+                st.caption(f"현재 기지국 후보: {candidate_count}개")
+            if 'obstacle_status' in st.session_state:
+                st.caption(st.session_state['obstacle_status'])
+            obstacle_apply_mode = st.radio(
+                "오브젝트 적용 방식",
+                ["교체", "추가"],
+                horizontal=True,
+            )
+            apply_obstacles_clicked = st.button("오브젝트 다시 불러오기/적용")
+            clear_obstacles_clicked = st.button("오브젝트 초기화")
+
+            if apply_obstacles_clicked:
+                apply_status = st.empty()
+                apply_progress = st.progress(0)
+                apply_status.info("오브젝트를 적용하고 있습니다...")
+                apply_progress.progress(20)
+                try:
+                    applied_count, raw_count = apply_obstacle_source(
+                        env,
+                        obstacle_source,
+                        uploaded_geojson,
+                        float(min_obstacle_area_m2),
+                        max_map_obstacles,
+                        obstacle_pattern,
+                        int(num_obstacles),
+                        osm_obstacle_types=osm_obstacle_types,
+                        osm_object_mode=osm_object_mode,
+                        append=obstacle_apply_mode == "추가",
+                    )
+                    apply_progress.progress(80)
+                    st.session_state['env'] = env
+                    applied_type = "기지국 후보" if osm_object_mode == "기지국 후보로 사용" else "장애물"
+                    st.session_state['obstacle_status'] = (
+                        f"{obstacle_source}({applied_type}): 원본 {raw_count}개 중 {applied_count}개 적용"
+                    )
+                    apply_status.success(f"{applied_type} 적용 완료")
+                    apply_progress.progress(100)
+                    clear_optimization_state()
+                    st.rerun()
+                except Exception as exc:
+                    apply_status.error(f"적용 실패: {exc}")
+                    st.error(f"적용 실패: {exc}")
+                finally:
+                    apply_progress.empty()
+
+            if clear_obstacles_clicked:
+                clear_status = st.empty()
+                clear_status.info("지도를 초기화하고 있습니다...")
+                env.clear_obstacles()
+                clear_status.success("지도 요소 초기화 완료")
+                st.session_state['env'] = env
+                st.session_state['obstacle_status'] = "지도 요소(오브젝트/후보) 초기화 완료"
+                clear_optimization_state()
+                st.rerun()
+
+            st.markdown("---")
+
+        st.header("데이터 내보내기")
         df_geo = env.get_dataframe()
         st.download_button("GIS 데이터 (CSV)", df_geo.to_csv(index=False).encode('utf-8'), "traffic_geo.csv", "text/csv")
         local_data = env.get_local_data_top_left()
@@ -96,6 +571,17 @@ with st.sidebar:
         buffer = io.BytesIO()
         np.save(buffer, env.traffic_map)
         st.download_button("Map 데이터 (NPY)", buffer, "traffic_map.npy", "application/octet-stream")
+        if getattr(env, 'traffic_series', None) is not None:
+            show_series_download = st.checkbox("전체 시계열 다운로드 표시", value=False)
+            if show_series_download:
+                series_buffer = io.BytesIO()
+                np.save(series_buffer, env.traffic_series)
+                st.download_button(
+                    "Time Series 데이터 (NPY)",
+                    series_buffer,
+                    "traffic_series.npy",
+                    "application/octet-stream",
+                )
 
     st.markdown("---")
     st.header("2. 시각화 설정")
@@ -216,7 +702,12 @@ if ('opt_results' in st.session_state
         with st.expander("기지국 위치 변화 (Station Movement)", expanded=False):
             env = st.session_state['env']
             n_snaps = len(snapshots)
-            _problem = ProblemInput.from_env(env, radius_m=radius_m, capacity=capacity)
+            _problem = ProblemInput.from_env(
+                env,
+                radius_m=radius_m,
+                capacity=capacity,
+                station_candidate_points=env.station_candidate_points,
+            )
 
             # geo 변환된 트래픽 히트맵 extent
             _geo_extent = [env.lon_min, env.lon_max, env.lat_min, env.lat_max]
@@ -281,7 +772,18 @@ m = folium.Map(
 
 if 'env' in st.session_state:
     env = st.session_state['env']
-    df = env.get_dataframe()
+    raw_series = env.get_raw_traffic_series()
+    if raw_series is not None:
+        flat_traffic = raw_series[env.dynamic_frame_index].ravel()
+    else:
+        flat_traffic = env.get_raw_traffic_map().ravel()
+    obstacle_mask = env.get_obstacle_mask().ravel()
+    df = pd.DataFrame({
+        "lat": env.lat_grid.ravel(),
+        "lon": env.lon_grid.ravel(),
+        "traffic": flat_traffic,
+        "is_obstacle": obstacle_mask,
+    })
 
     status_list = []
 
@@ -292,11 +794,13 @@ if 'env' in st.session_state:
         calc_radius = res.get('radius', 300)
         calc_capacity = st.session_state['opt_stats'].get('capacity', 1000)
 
-        grid_points = df[['lat', 'lon', 'traffic']].values
+        non_obstacle_mask = (~df['is_obstacle']) & (df['traffic'] > 0.1)
+        grid_points = df.loc[non_obstacle_mask, ['lat', 'lon', 'traffic']].values
+        grid_indices = np.where(non_obstacle_mask.to_numpy())[0]
         station_points = stations[['lat', 'lon']].values
 
         if len(station_points) > 0:
-            grid_status = np.zeros(len(grid_points), dtype=int)
+            grid_status = np.zeros(len(df), dtype=int)
             station_allocations = [[] for _ in range(len(station_points))]
 
             x_scale = env.width_m / (env.lon_max - env.lon_min)
@@ -330,30 +834,42 @@ if 'env' in st.session_state:
                 for idx, dist, traffic in allocs:
                     if current_load + traffic <= calc_capacity:
                         current_load += traffic
-                        grid_status[idx] = 1  # Covered
+                        grid_status[grid_indices[idx]] = 1  # Covered
                     else:
-                        grid_status[idx] = 2  # Overloaded
+                        grid_status[grid_indices[idx]] = 2  # Overloaded
+
+            grid_status[df['is_obstacle']] = -1
 
             status_list = grid_status
         else:
-            status_list = np.zeros(len(grid_points), dtype=int)
+            status_list = np.zeros(len(df), dtype=int)
+            status_list[df['is_obstacle']] = -1
     else:
         status_list = np.zeros(len(df), dtype=int)
+        status_list[df['is_obstacle']] = -1
 
     lat_step = (env.lat_max - env.lat_min) / env.rows
     lon_step = (env.lon_max - env.lon_min) / env.cols
 
     features = []
     for idx, (i, row) in enumerate(df.iterrows()):
-        r_lat, r_lon, val = row['lat'], row['lon'], row['traffic']
+        r_lat, r_lon, val, is_obstacle = row['lat'], row['lon'], row['traffic'], row['is_obstacle']
 
         color = '#ff0000'
         opacity = min(val / 150.0, 0.8)
-        status_text = "N/A"
+        status_text = "Obstacle" if is_obstacle else "N/A"
+
+        if is_obstacle:
+            color = '#808080'
+            opacity = 0.65
 
         if map_layer_mode == "커버리지 상태 (Status)" and len(status_list) > 0 and idx < len(status_list):
             status = status_list[idx]
-            if status == 1:
+            if is_obstacle:
+                color = '#808080'
+                opacity = 0.65
+                status_text = "Obstacle"
+            elif status == 1:
                 color = '#0000ff'  # Blue
             elif status == 2:
                 color = '#ffa500'  # Orange
@@ -361,7 +877,7 @@ if 'env' in st.session_state:
                 color = '#ff0000'  # Red
 
             opacity = min(val / 150.0 + 0.2, 0.9)
-            status_text = {0: "Uncovered", 1: "Covered", 2: "Overloaded"}[status]
+            status_text = {0: "Uncovered", 1: "Covered", 2: "Overloaded", -1: "Obstacle"}.get(status, "N/A")
 
         min_lat, max_lat = r_lat - lat_step/2, r_lat + lat_step/2
         min_lon, max_lon = r_lon - lon_step/2, r_lon + lon_step/2
@@ -380,6 +896,7 @@ if 'env' in st.session_state:
             },
             "properties": {
                 "traffic": round(val, 2),
+                "is_obstacle": bool(is_obstacle),
                 "status": status_text,
                 "fillColor": color,
                 "fillOpacity": opacity
@@ -389,7 +906,7 @@ if 'env' in st.session_state:
 
     if features:
         geojson_data = {"type": "FeatureCollection", "features": features}
-        GeoJson(
+        traffic_geojson = GeoJson(
             geojson_data,
             style_function=lambda x: {
                 'fillColor': x['properties']['fillColor'],
@@ -398,11 +915,31 @@ if 'env' in st.session_state:
                 'fillOpacity': x['properties']['fillOpacity']
             },
             tooltip=folium.GeoJsonTooltip(fields=['traffic', 'status'], aliases=['Traffic:', 'Status:'], style="font-size: 14px; font-weight: bold;")
-        ).add_to(m)
+        )
+        traffic_geojson.add_to(m)
+        if getattr(env, 'traffic_series', None) is not None and env.traffic_series.shape[0] > 1:
+            add_dynamic_traffic_playback(
+                m,
+                env,
+                df,
+                st.session_state.get('traffic_js_interval', 0.5),
+                raw_series,
+            )
 
-    for poly in env.obstacles_geo:
-        coords = [(y, x) for x, y in list(poly.exterior.coords)]
-        folium.Polygon(locations=coords, color='gray', fill=True, fill_color='gray', fill_opacity=0.5, popup="Obstacle").add_to(m)
+    candidate_points = env.local_points_to_geo(env.station_candidate_points)
+    if len(candidate_points) > 0:
+        candidate_group = folium.FeatureGroup(name="Station Candidates")
+        for idx, (lat, lon) in enumerate(candidate_points):
+            folium.CircleMarker(
+                location=[lat, lon],
+                radius=5,
+                color='blue',
+                fill=True,
+                fill_color='blue',
+                fill_opacity=0.7,
+                popup=f"Station Candidate #{idx + 1}",
+            ).add_to(candidate_group)
+        candidate_group.add_to(m)
 
 # 기지국 마커 표시
 if 'opt_results' in st.session_state and 'opt_stats' in st.session_state:
@@ -432,26 +969,58 @@ if 'opt_results' in st.session_state and 'opt_stats' in st.session_state:
 output = st_folium(m, width="100%", height=700)
 
 if create_clicked:
-    if output and output.get('bounds') and output.get('center'):
-        bounds = output['bounds']
-        sw = (bounds['_southWest']['lat'], bounds['_southWest']['lng'])
-        ne = (bounds['_northEast']['lat'], bounds['_northEast']['lng'])
-        center = output['center']
-        zoom = output['zoom']
+    create_status = st.empty()
+    create_progress = st.progress(0)
+    with st.spinner("가상 환경을 생성하고 있습니다."):
+        create_progress.progress(10)
+        create_status.info("지도를 기준으로 환경 영역을 계산하는 중입니다.")
+        if output and output.get('bounds') and output.get('center'):
+            bounds = output['bounds']
+            sw = (bounds['_southWest']['lat'], bounds['_southWest']['lng'])
+            ne = (bounds['_northEast']['lat'], bounds['_northEast']['lng'])
+            center = output['center']
+            center_lat = center['lat']
+            center_lon = center['lng']
+            zoom = output.get('zoom', st.session_state['map_view']['zoom'])
 
-        width_km = geodesic((sw[0], sw[1]), (sw[0], ne[1])).km
-        height_km = geodesic((sw[0], sw[1]), (ne[0], sw[1])).km
+            width_km = geodesic((sw[0], sw[1]), (sw[0], ne[1])).km
+            height_km = geodesic((sw[0], sw[1]), (ne[0], sw[1])).km
+        else:
+            center_lat, center_lon = st.session_state['map_view']['center']
+            zoom = st.session_state['map_view']['zoom']
+            width_km = 2.0
+            height_km = 2.0
 
-        st.session_state['map_view'] = {'center': [center['lat'], center['lng']], 'zoom': zoom}
+        st.session_state['map_view'] = {'center': [center_lat, center_lon], 'zoom': zoom}
+        create_progress.progress(25)
 
+        create_status.info("트래픽 분포를 생성하고 있습니다.")
         env = SyntheticEnvironment(
-            center_lat=center['lat'],
-            center_lon=center['lng'],
+            center_lat=center_lat,
+            center_lon=center_lon,
             width_km=width_km,
             height_km=height_km,
             resolution_m=resolution_m
         )
-        if traffic_pattern == "multi_hotspot":
+        if dynamic_traffic:
+            pattern_params = {}
+            if traffic_pattern == "multi_hotspot":
+                sigma_cells = max(spread_m / max(resolution_m, 1), 1.0)
+                pattern_params = {
+                    "n_centers": num_hotspots,
+                    "sigma_x": sigma_cells,
+                    "sigma_y": sigma_cells,
+                }
+            env.generate_dynamic_traffic_pattern(
+                pattern=traffic_pattern,
+                time_steps=dynamic_time_steps,
+                max_intensity=max_intensity,
+                base_intensity=base_intensity,
+                variation=dynamic_variation,
+                drift_m=dynamic_drift_m,
+                params=pattern_params,
+            )
+        elif traffic_pattern == "multi_hotspot":
             # 레거시 경로: m 단위 spread, max_intensity=100 고정
             env.generate_traffic(num_hotspots=num_hotspots, spread_m=spread_m,
                                  base_intensity=base_intensity,
@@ -462,20 +1031,50 @@ if create_clicked:
                 max_intensity=max_intensity,
                 base_intensity=base_intensity,
             )
-        env.generate_obstacles(num_obstacles=num_obstacles, pattern=obstacle_pattern)
-        env.apply_masking()
+        create_progress.progress(55)
+
+        create_status.info("오브젝트 소스를 적용하는 중입니다.")
+        try:
+            applied_count, raw_count = apply_obstacle_source(
+                env,
+                obstacle_source,
+                uploaded_geojson,
+                float(min_obstacle_area_m2),
+                max_map_obstacles,
+                obstacle_pattern,
+                int(num_obstacles),
+                osm_obstacle_types=osm_obstacle_types,
+                osm_object_mode=osm_object_mode,
+                append=False,
+            )
+            applied_type = "기지국 후보" if osm_object_mode == "기지국 후보로 사용" else "장애물"
+            st.session_state['obstacle_status'] = (
+                f"{obstacle_source}({applied_type}): 원본 {raw_count}개 중 {applied_count}개 적용"
+            )
+            create_progress.progress(90)
+            create_status.success("가상 환경 생성 완료")
+        except Exception as exc:
+            env.clear_obstacles()
+            st.session_state['obstacle_status'] = f"적용 실패: {exc}"
+            create_status.error(f"적용 실패: {exc}")
+        create_progress.progress(100)
 
         st.session_state['env'] = env
-        for k in ('opt_results', 'opt_stats', 'range_results'):
-            if k in st.session_state:
-                del st.session_state[k]
+        clear_optimization_state()
         st.rerun()
+    create_progress.empty()
 
 if optimize_clicked:
     start_time = time.time()
     if 'env' in st.session_state:
+        optimize_status = st.empty()
         env = st.session_state['env']
-        problem = ProblemInput.from_env(env, radius_m=radius_m, capacity=capacity)
+        problem = ProblemInput.from_env(
+            env,
+            radius_m=radius_m,
+            capacity=capacity,
+            station_candidate_points=env.station_candidate_points,
+        )
 
         for k in ('opt_results', 'opt_stats', 'range_results'):
             if k in st.session_state:
@@ -490,6 +1089,7 @@ if optimize_clicked:
         progress_bar = st.progress(0)
 
         for idx, k in enumerate(k_list):
+            optimize_status.info(f"기지국 {k}개 계산 중... ({idx + 1}/{len(k_list)})")
             result = optimizer.optimize(problem, n_stations=k, **hyperparams)
 
             stations_geo = convert_to_geo(result.stations, problem)
@@ -516,13 +1116,14 @@ if optimize_clicked:
             progress_bar.progress((idx + 1) / len(k_list))
 
         progress_bar.empty()
+        optimize_status.success(f"계산 완료 (소요 시간: {time.time() - start_time:.2f}초)")
         st.session_state['range_results'] = range_results
 
         best_res = max(range_results, key=lambda x: x['score'])
         st.session_state['opt_results'] = best_res['opt_results']
         st.session_state['opt_stats'] = best_res['stats']
 
-        st.success("계산 완료 (소요 시간: {:.2f}초)".format(time.time() - start_time))
+        optimize_status.success("최적화 결과 저장 완료")
         st.rerun()
     else:
         st.error("먼저 데이터를 생성해주세요.")
