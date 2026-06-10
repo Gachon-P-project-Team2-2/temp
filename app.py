@@ -1031,20 +1031,25 @@ def metric_card(title: str, value: str):
     )
 
 
+def _disclosure(title: str, children: list, open: bool = False):
+    return html.Details(
+        [html.Summary(html.H3(title, style={"display": "inline", "margin": 0})), *children],
+        open=open,
+        style={"marginBottom": "12px"},
+    )
+
+
 def sidebar_layout():
     available_algos = [cls.name for cls in REGISTRY]
     default_algo = available_algos[0] if available_algos else ""
 
-    def _disclosure(title: str, children: list[Any], open: bool = False):
-        return html.Details(
-            [html.Summary(html.H3(title, style={"display": "inline", "margin": 0})), *children],
-            open=open,
-            style={"marginBottom": "12px"},
-        )
-
     return html.Aside(
         [
-            html.H2("시뮬레이터 제어", style={"marginTop": 0}),
+            html.Button("◄ 접기", id="left-toggle-btn", n_clicks=0,
+                        className="sidebar-toggle-btn"),
+            html.Div(
+              [
+                html.H2("시뮬레이터 제어", style={"marginTop": 0}),
 
             _disclosure(
                 "1. 환경 설정",
@@ -1323,266 +1328,284 @@ def sidebar_layout():
                 open=True,
             ),
 
-            _disclosure(
-                "3. 계산 알고리즘",
-                [
-                    html.Label("알고리즘 선택"),
-                    dcc.Dropdown(
-                        id="algo-select",
-                        options=[{"label": x, "value": x} for x in available_algos],
-                        value=default_algo,
-                    ),
-                    html.Div(id="hyperparam-controls"),
-
-                    html.Label("기지국 개수 설정"),
-                    dcc.RadioItems(
-                        id="opt-mode",
-                        options=[
-                            {"label": "고정 개수 (Fixed)", "value": "고정 개수 (Fixed)"},
-                            {"label": "범위 탐색 (Range)", "value": "범위 탐색 (Range)"},
-                        ],
-                        value="고정 개수 (Fixed)",
-                    ),
-
-                    html.Div(
-                        [
-                            html.Div(
-                                [
-                                    html.Label("기지국 수"),
-                                    dcc.Slider(
-                                        id="n-stations",
-                                        min=1,
-                                        max=100,
-                                        step=1,
-                                        value=5,
-                                        tooltip={"placement": "bottom"},
-                                    ),
-                                ],
-                                id="fixed-count-controls",
-                            ),
-
-                            html.Div(
-                                [
-                                    html.Label("최소 개수"),
-                                    dcc.Input(
-                                        id="k-min",
-                                        type="number",
-                                        min=1,
-                                        max=100,
-                                        step=1,
-                                        value=3,
-                                        style={"width": "48%", "marginRight": "4%"},
-                                    ),
-
-                                    html.Label("최대 개수"),
-                                    dcc.Input(
-                                        id="k-max",
-                                        type="number",
-                                        min=1,
-                                        max=200,
-                                        step=1,
-                                        value=10,
-                                        style={"width": "48%"},
-                                    ),
-                                ],
-                                id="range-count-controls",
-                            ),
-                        ],
-                        id="station-count-controls",
-                    ),
-                ],
-                open=True,
-            ),
-
-            _disclosure(
-                "기지국 스펙",
-                [
-                    dcc.RadioItems(
-                        id="spec-mode",
-                        options=[
-                            {"label": "전체 동일", "value": "전체 동일"},
-                            {"label": "기지국별 개별", "value": "기지국별 개별"},
-                        ],
-                        value="전체 동일",
-                        inline=True,
-                    ),
-
-                    html.Label("기본 용량 (Traffic)"),
-                    dcc.Input(
-                        id="capacity-default",
-                        type="number",
-                        min=500,
-                        max=1_000_000_000,
-                        step=100,
-                        value=2000,
-                        style={"width": "100%"},
-                    ),
-
-                    html.Div(
-                        [
-                            dash_table.DataTable(
-                                id="station-spec-table",
-                                columns=[
-                                    {"name": "station", "id": "station", "type": "numeric", "editable": False},
-                                    {"name": "radius_m", "id": "radius_m", "type": "numeric", "editable": False},
-                                    {"name": "capacity", "id": "capacity", "type": "numeric", "editable": True},
-                                    {"name": "tx_power_dbm", "id": "tx_power_dbm", "type": "numeric", "editable": True},
-                                ],
-                                data=ensure_station_spec_rows([], 5, 300.0, 2000.0, 43.0),
-                                editable=True,
-                                page_size=10,
-                                style_table={"overflowX": "auto"},
-                                style_cell={"fontSize": "12px", "padding": "4px"},
-                            )
-                        ],
-                        id="spec-table-wrap",
-                        style={"marginTop": "8px", "display": "none"},
-                    ),
-                ],
-                open=True,
-            ),
-
-            _disclosure(
-                "전파 모델",
-                [
-                    html.Label("송신 전력 (dBm)"),
-                    dcc.Slider(
-                        id="ui-tx-power",
-                        min=20,
-                        max=50,
-                        step=1,
-                        value=43,
-                        tooltip={"placement": "bottom"},
-                    ),
-
-                    html.Label("경로 손실 지수 n"),
-                    dcc.Slider(
-                        id="ui-path-loss-exp",
-                        min=2.0,
-                        max=5.0,
-                        step=0.1,
-                        value=3.5,
-                        tooltip={"placement": "bottom"},
-                    ),
-
-                    html.Label("대역폭 (MHz)"),
-                    dcc.Slider(
-                        id="ui-bandwidth-mhz",
-                        min=1,
-                        max=100,
-                        step=1,
-                        value=10,
-                        tooltip={"placement": "bottom"},
-                    ),
-
-                    html.Label("SINR 임계값 (dB)"),
-                    dcc.Slider(
-                        id="ui-sinr-threshold",
-                        min=-10,
-                        max=30,
-                        step=1,
-                        value=3,
-                        tooltip={"placement": "bottom"},
-                    ),
-
-                    html.Div(
-                        id="noise-caption",
-                        style={"fontSize": "12px", "color": "#555", "marginTop": "4px"},
-                    ),
-
-                    dcc.Checklist(
-                        id="ui-hetnet",
-                        options=[{"label": "HetNet 활성화 — 매크로 + 스몰셀 혼합 배치", "value": "on"}],
-                        value=[],
-                        style={"marginTop": "8px"},
-                    ),
-
-                    html.Div(
-                        [
-                            html.Div(
-                                [
-                                    html.Label("매크로 기지국 수"),
-                                    dcc.Input(
-                                        id="ui-n-macro",
-                                        type="number",
-                                        min=0,
-                                        max=20,
-                                        step=1,
-                                        value=2,
-                                        style={"width": "48%", "marginRight": "4%"},
-                                    ),
-
-                                    html.Label("스몰셀 수"),
-                                    dcc.Input(
-                                        id="ui-n-small",
-                                        type="number",
-                                        min=0,
-                                        max=50,
-                                        step=1,
-                                        value=3,
-                                        style={"width": "48%"},
-                                    ),
-                                ]
-                            ),
-                            
-                            html.Label("매크로 전력 (dBm)"),
-                            dcc.Slider(
-                                id="ui-macro-power",
-                                min=30,
-                                max=50,
-                                step=1,
-                                value=43,
-                                tooltip={"placement": "bottom"},
-                            ),
-
-                            html.Label("스몰셀 전력 (dBm)"),
-                            dcc.Slider(
-                                id="ui-small-power",
-                                min=20,
-                                max=40,
-                                step=1,
-                                value=30,
-                                tooltip={"placement": "bottom"},
-                            ),
-                        ],
-                        id="hetnet-controls",
-                    ),
-
-                    html.Button(
-                        "계산 실행",
-                        id="optimize-btn",
-                        n_clicks=0,
-                        className="primary-button",
-                    ),
-                ],
-                open=True,
-            ),
-
-            _disclosure(
-                "데이터 내보내기",
-                [
-                    html.Button("GIS CSV", id="download-gis-btn", n_clicks=0),
-                    html.Button(
-                        "Local CSV",
-                        id="download-local-btn",
-                        n_clicks=0,
-                        style={"marginLeft": "6px"},
-                    ),
-                ],
-                open=True,
+              ],
+              id="left-sidebar-body",
+              className="sidebar-body",
+              style={"overflowY": "auto", "flex": "1"},
             ),
         ],
+        id="left-sidebar",
         style={
-            "width": "380px",
-            "minWidth": "380px",
+            "width": "320px",
+            "minWidth": "320px",
             "height": "100vh",
-            "overflowY": "auto",
-            "padding": "16px",
+            "display": "flex",
+            "flexDirection": "column",
             "background": "#ffffff",
             "borderRight": "1px solid #e5e7eb",
             "boxSizing": "border-box",
+            "padding": "0",
+            "transition": "width 0.2s ease, min-width 0.2s ease",
         },
     )
+
+
+def algo_sidebar_layout():
+    """알고리즘 설정 패널 — 우측 사이드바에 삽입."""
+    available_algos = [cls.name for cls in REGISTRY]
+    default_algo = available_algos[0] if available_algos else ""
+    return html.Div([
+        _disclosure(
+            "계산 알고리즘",
+            [
+                html.Label("알고리즘 선택"),
+                dcc.Dropdown(
+                    id="algo-select",
+                    options=[{"label": x, "value": x} for x in available_algos],
+                    value=default_algo,
+                ),
+                html.Div(id="hyperparam-controls"),
+
+                html.Label("기지국 개수 설정"),
+                dcc.RadioItems(
+                    id="opt-mode",
+                    options=[
+                        {"label": "고정 개수 (Fixed)", "value": "고정 개수 (Fixed)"},
+                        {"label": "범위 탐색 (Range)", "value": "범위 탐색 (Range)"},
+                    ],
+                    value="고정 개수 (Fixed)",
+                ),
+
+                html.Div(
+                    [
+                        html.Div(
+                            [
+                                html.Label("기지국 수"),
+                                dcc.Slider(
+                                    id="n-stations",
+                                    min=1,
+                                    max=100,
+                                    step=1,
+                                    value=5,
+                                    tooltip={"placement": "bottom"},
+                                ),
+                            ],
+                            id="fixed-count-controls",
+                        ),
+
+                        html.Div(
+                            [
+                                html.Label("최소 개수"),
+                                dcc.Input(
+                                    id="k-min",
+                                    type="number",
+                                    min=1,
+                                    max=100,
+                                    step=1,
+                                    value=3,
+                                    style={"width": "48%", "marginRight": "4%"},
+                                ),
+
+                                html.Label("최대 개수"),
+                                dcc.Input(
+                                    id="k-max",
+                                    type="number",
+                                    min=1,
+                                    max=200,
+                                    step=1,
+                                    value=10,
+                                    style={"width": "48%"},
+                                ),
+                            ],
+                            id="range-count-controls",
+                        ),
+                    ],
+                    id="station-count-controls",
+                ),
+            ],
+            open=True,
+        ),
+
+        _disclosure(
+            "기지국 스펙",
+            [
+                dcc.RadioItems(
+                    id="spec-mode",
+                    options=[
+                        {"label": "전체 동일", "value": "전체 동일"},
+                        {"label": "기지국별 개별", "value": "기지국별 개별"},
+                    ],
+                    value="전체 동일",
+                    inline=True,
+                ),
+
+                html.Label("기본 용량 (Traffic)"),
+                dcc.Input(
+                    id="capacity-default",
+                    type="number",
+                    min=500,
+                    max=1_000_000_000,
+                    step=100,
+                    value=10000,
+                    style={"width": "100%"},
+                ),
+
+                html.Div(
+                    [
+                        dash_table.DataTable(
+                            id="station-spec-table",
+                            columns=[
+                                {"name": "station", "id": "station", "type": "numeric", "editable": False},
+                                {"name": "radius_m", "id": "radius_m", "type": "numeric", "editable": False},
+                                {"name": "capacity", "id": "capacity", "type": "numeric", "editable": True},
+                                {"name": "tx_power_dbm", "id": "tx_power_dbm", "type": "numeric", "editable": True},
+                            ],
+                            data=ensure_station_spec_rows([], 5, 300.0, 2000.0, 43.0),
+                            editable=True,
+                            page_size=10,
+                            style_table={"overflowX": "auto"},
+                            style_cell={"fontSize": "12px", "padding": "4px"},
+                        )
+                    ],
+                    id="spec-table-wrap",
+                    style={"marginTop": "8px", "display": "none"},
+                ),
+            ],
+            open=True,
+        ),
+
+        _disclosure(
+            "전파 모델",
+            [
+                html.Label("송신 전력 (dBm)"),
+                dcc.Slider(
+                    id="ui-tx-power",
+                    min=20,
+                    max=50,
+                    step=1,
+                    value=43,
+                    tooltip={"placement": "bottom"},
+                ),
+
+                html.Label("경로 손실 지수 n"),
+                dcc.Slider(
+                    id="ui-path-loss-exp",
+                    min=2.0,
+                    max=5.0,
+                    step=0.1,
+                    value=3.5,
+                    tooltip={"placement": "bottom"},
+                ),
+
+                html.Label("대역폭 (MHz)"),
+                dcc.Slider(
+                    id="ui-bandwidth-mhz",
+                    min=1,
+                    max=100,
+                    step=1,
+                    value=10,
+                    tooltip={"placement": "bottom"},
+                ),
+
+                html.Label("SINR 임계값 (dB)"),
+                dcc.Slider(
+                    id="ui-sinr-threshold",
+                    min=-10,
+                    max=30,
+                    step=1,
+                    value=3,
+                    tooltip={"placement": "bottom"},
+                ),
+
+                html.Div(
+                    id="noise-caption",
+                    style={"fontSize": "12px", "color": "#555", "marginTop": "4px"},
+                ),
+
+                dcc.Checklist(
+                    id="ui-hetnet",
+                    options=[{"label": "HetNet 활성화 — 매크로 + 스몰셀 혼합 배치", "value": "on"}],
+                    value=[],
+                    style={"marginTop": "8px"},
+                ),
+
+                html.Div(
+                    [
+                        html.Div(
+                            [
+                                html.Label("매크로 기지국 수"),
+                                dcc.Input(
+                                    id="ui-n-macro",
+                                    type="number",
+                                    min=0,
+                                    max=20,
+                                    step=1,
+                                    value=2,
+                                    style={"width": "48%", "marginRight": "4%"},
+                                ),
+
+                                html.Label("스몰셀 수"),
+                                dcc.Input(
+                                    id="ui-n-small",
+                                    type="number",
+                                    min=0,
+                                    max=50,
+                                    step=1,
+                                    value=3,
+                                    style={"width": "48%"},
+                                ),
+                            ]
+                        ),
+
+                        html.Label("매크로 전력 (dBm)"),
+                        dcc.Slider(
+                            id="ui-macro-power",
+                            min=30,
+                            max=50,
+                            step=1,
+                            value=43,
+                            tooltip={"placement": "bottom"},
+                        ),
+
+                        html.Label("스몰셀 전력 (dBm)"),
+                        dcc.Slider(
+                            id="ui-small-power",
+                            min=20,
+                            max=40,
+                            step=1,
+                            value=30,
+                            tooltip={"placement": "bottom"},
+                        ),
+                    ],
+                    id="hetnet-controls",
+                ),
+
+                html.Button(
+                    "계산 실행",
+                    id="optimize-btn",
+                    n_clicks=0,
+                    className="primary-button",
+                ),
+            ],
+            open=True,
+        ),
+
+        _disclosure(
+            "데이터 내보내기",
+            [
+                html.Button("GIS CSV", id="download-gis-btn", n_clicks=0),
+                html.Button(
+                    "Local CSV",
+                    id="download-local-btn",
+                    n_clicks=0,
+                    style={"marginLeft": "6px"},
+                ),
+            ],
+            open=True,
+        ),
+    ])
+
+
 def serve_layout():
     session_id = str(uuid.uuid4())
 
@@ -1599,6 +1622,11 @@ def serve_layout():
             dcc.Store(id="algo-history-store", data=None),
             dcc.Store(id="opt-live-store", data=None),
             dcc.Interval(id="opt-poll-interval", interval=750, disabled=True, n_intervals=0),
+            dcc.Store(id="sweep-meta"),
+            dcc.Interval(id="sweep-poll-interval", interval=500, disabled=True, n_intervals=0),
+            dcc.Store(id="left-sidebar-open", data=True),
+            dcc.Store(id="right-sidebar-open", data=True),
+            dcc.Store(id="sidebar-resize-dummy"),
 
             dcc.Download(id="download-gis-csv"),
             dcc.Download(id="download-local-csv"),
@@ -1606,6 +1634,8 @@ def serve_layout():
             html.Div(
                 [
                     sidebar_layout(),
+
+                    html.Div(id="left-resize-handle", className="resize-handle-v"),
 
                     html.Main(
                         [
@@ -1701,46 +1731,180 @@ def serve_layout():
                                        "borderRadius": "8px"},
                             ),
 
-                            dl.Map(
-                                id="sim-map",
-                                center=DEFAULT_CENTER,
-                                zoom=DEFAULT_ZOOM,
-                                bounds=None,
-                                children=[
-                                    dl.TileLayer(
-                                        url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
-                                        attribution="&copy; OpenStreetMap contributors &copy; CARTO",
-                                    ),
-                                    dl.LayerGroup(id="overlay-layers", children=[]),
-                                    dl.FeatureGroup(
-                                        id="region-draw-feature-group",
+                            html.Div(
+                                [
+                                    dl.Map(
+                                        id="sim-map",
+                                        center=DEFAULT_CENTER,
+                                        zoom=DEFAULT_ZOOM,
+                                        bounds=None,
                                         children=[
-                                            dl.EditControl(
-                                                id="region-edit-control",
-                                                draw={
-                                                    "rectangle": {},
-                                                    "polyline": False,
-                                                    "polygon": False,
-                                                    "circle": False,
-                                                    "marker": False,
-                                                    "circlemarker": False,
-                                                },
-                                                edit={"edit": False},
-                                                position="topleft",
-                                            )
+                                            dl.TileLayer(
+                                                url="https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+                                                attribution="&copy; OpenStreetMap contributors &copy; CARTO",
+                                            ),
+                                            dl.LayerGroup(id="overlay-layers", children=[]),
+                                            dl.FeatureGroup(
+                                                id="region-draw-feature-group",
+                                                children=[
+                                                    dl.EditControl(
+                                                        id="region-edit-control",
+                                                        draw={
+                                                            "rectangle": {},
+                                                            "polyline": False,
+                                                            "polygon": False,
+                                                            "circle": False,
+                                                            "marker": False,
+                                                            "circlemarker": False,
+                                                        },
+                                                        edit={"edit": False},
+                                                        position="topleft",
+                                                    )
+                                                ],
+                                            ),
+                                        ],
+                                        style={
+                                            "width": "100%",
+                                            "height": "720px",
+                                            "borderRadius": "8px",
+                                        },
+                                    ),
+                                    html.Div(
+                                        id="range-panel",
+                                        style={
+                                            "position": "absolute",
+                                            "top": "8px",
+                                            "right": "8px",
+                                            "zIndex": "1000",
+                                            "pointerEvents": "auto",
+                                        },
+                                    ),
+                                ],
+                                style={"position": "relative"},
+                            ),
+                        ],
+                        style={"flex": "1", "padding": "18px", "minWidth": 0},
+                    ),
+
+                    html.Div(id="right-resize-handle", className="resize-handle-v"),
+
+                    # ── 우측 Sweep 사이드바 ──────────────────────────────────
+                    html.Aside(
+                        [
+                            html.Button("접기 ►", id="right-toggle-btn", n_clicks=0,
+                                        className="sidebar-toggle-btn",
+                                        style={"textAlign": "left"}),
+                            html.Div(
+                                [
+                                    dcc.Tabs(
+                                        id="right-tabs",
+                                        value="tab-algo",
+                                        children=[
+                                            dcc.Tab(
+                                                label="알고리즘",
+                                                value="tab-algo",
+                                                children=[algo_sidebar_layout()],
+                                                style={"padding": "10px 4px 0"},
+                                                selected_style={"padding": "10px 4px 0",
+                                                                "fontWeight": "700"},
+                                            ),
+                                            dcc.Tab(
+                                                label="Sweep",
+                                                value="tab-sweep",
+                                                children=[
+                                                    html.Details(
+                                                        [
+                                                            html.Summary(
+                                                                html.H3("Sweep 설정",
+                                                                        style={"display": "inline", "margin": 0})
+                                                            ),
+                                                            html.Div(
+                                                                id="sweep-algo-display",
+                                                                style={"fontSize": "12px", "color": "#6b7280",
+                                                                       "marginTop": "8px", "marginBottom": "8px"},
+                                                            ),
+                                                            html.Div(id="sweep-params-container"),
+                                                            html.Button(
+                                                                "Sweep 실행",
+                                                                id="sweep-run-btn",
+                                                                n_clicks=0,
+                                                                className="primary-button",
+                                                            ),
+                                                            html.Div(id="sweep-status",
+                                                                     style={"fontSize": "12px", "marginTop": "8px"}),
+                                                        ],
+                                                        open=True,
+                                                        style={"marginBottom": "12px"},
+                                                    ),
+
+                                                    html.Details(
+                                                        [
+                                                            html.Summary(
+                                                                html.H3("Sweep 결과",
+                                                                        style={"display": "inline", "margin": 0})
+                                                            ),
+                                                            html.Div(
+                                                                [
+                                                                    dcc.Graph(
+                                                                        id="sweep-result-chart",
+                                                                        style={"height": "300px", "marginTop": "8px"},
+                                                                        config={"displayModeBar": True,
+                                                                                "modeBarButtonsToRemove": [
+                                                                                    "lasso2d", "select2d",
+                                                                                ]},
+                                                                    ),
+                                                                    html.Div(id="sweep-result-table",
+                                                                             style={"marginTop": "6px",
+                                                                                    "maxHeight": "260px",
+                                                                                    "overflowY": "auto"}),
+                                                                    html.Button(
+                                                                        "최적 결과 적용",
+                                                                        id="sweep-apply-btn",
+                                                                        n_clicks=0,
+                                                                        style={
+                                                                            "marginTop": "8px",
+                                                                            "width": "100%",
+                                                                            "padding": "6px",
+                                                                            "fontSize": "12px",
+                                                                            "background": "#059669",
+                                                                            "color": "#fff",
+                                                                            "border": "0",
+                                                                            "borderRadius": "6px",
+                                                                            "cursor": "pointer",
+                                                                            "fontWeight": "600",
+                                                                        },
+                                                                    ),
+                                                                ]
+                                                            ),
+                                                        ],
+                                                        open=True,
+                                                        style={"marginBottom": "12px"},
+                                                    ),
+                                                ],
+                                                style={"padding": "10px 4px 0"},
+                                                selected_style={"padding": "10px 4px 0",
+                                                                "fontWeight": "700"},
+                                            ),
                                         ],
                                     ),
                                 ],
-                                style={
-                                    "width": "100%",
-                                    "height": "720px",
-                                    "borderRadius": "8px",
-                                },
+                                id="right-sidebar-body",
+                                className="sidebar-body",
+                                style={"overflowY": "auto", "flex": "1", "padding": "16px"},
                             ),
-
-                            html.Div(id="range-panel", style={"marginTop": "20px"}),
                         ],
-                        style={"flex": "1", "padding": "18px", "minWidth": 0},
+                        id="right-sidebar",
+                        style={
+                            "width": "420px",
+                            "minWidth": "420px",
+                            "height": "100vh",
+                            "display": "flex",
+                            "flexDirection": "column",
+                            "borderLeft": "1px solid #e5e7eb",
+                            "background": "#f9fafb",
+                            "boxSizing": "border-box",
+                            "transition": "width 0.2s ease, min-width 0.2s ease",
+                        },
                     ),
                 ],
                 style={"display": "flex", "height": "100vh", "overflow": "hidden"},
@@ -1904,6 +2068,32 @@ app.index_string = """
                 cursor: not-allowed;
                 opacity: 0.7;
             }
+            .sidebar-toggle-btn {
+                display: block;
+                width: 100%;
+                padding: 4px 6px;
+                background: transparent;
+                border: none;
+                border-bottom: 1px solid #e5e7eb;
+                cursor: pointer;
+                font-size: 13px;
+                color: #6b7280;
+                text-align: right;
+                margin-bottom: 8px;
+            }
+            .sidebar-toggle-btn:hover { background: #f3f4f6; color: #111827; }
+            .sidebar-collapsed { overflow: hidden !important; }
+            .sidebar-collapsed .sidebar-body { display: none; }
+            .resize-handle-v {
+                width: 5px;
+                flex-shrink: 0;
+                cursor: col-resize;
+                background: transparent;
+                transition: background 0.15s;
+                z-index: 10;
+                user-select: none;
+            }
+            .resize-handle-v:hover { background: #93c5fd; }
         </style>
     </head>
     <body>
@@ -2190,26 +2380,18 @@ def create_environment(
 
     state = get_session_state(session_id)
 
-    try:
-        # Custom region takes priority over map viewport bounds
-        if isinstance(custom_region, dict) and custom_region.get("width_km") and custom_region.get("height_km"):
-            center_lat = float(custom_region["center_lat"])
-            center_lon = float(custom_region["center_lon"])
-            width_km = max(float(custom_region["width_km"]), 0.1)
-            height_km = max(float(custom_region["height_km"]), 0.1)
-        else:
-            parsed_bounds = parse_map_bounds(bounds)
-            center_lat, center_lon = parse_map_center(center)
+    if not (isinstance(custom_region, dict) and custom_region.get("width_km") and custom_region.get("height_km")):
+        no_upd = no_update
+        return no_upd, no_upd, no_upd, html.Span(
+            "영역을 먼저 지정해주세요. 지도에서 사각형을 그려 시뮬레이션 영역을 설정하세요.",
+            style={"color": "#dc2626", "fontWeight": "600"},
+        )
 
-            if parsed_bounds is not None:
-                sw, ne = parsed_bounds
-                width_km = geodesic((sw[0], sw[1]), (sw[0], ne[1])).km
-                height_km = geodesic((sw[0], sw[1]), (ne[0], sw[1])).km
-                width_km = max(width_km, 0.1)
-                height_km = max(height_km, 0.1)
-            else:
-                width_km = 2.0
-                height_km = 2.0
+    try:
+        center_lat = float(custom_region["center_lat"])
+        center_lon = float(custom_region["center_lon"])
+        width_km = max(float(custom_region["width_km"]), 0.1)
+        height_km = max(float(custom_region["height_km"]), 0.1)
 
         env = SyntheticEnvironment(
             center_lat=center_lat,
@@ -2505,17 +2687,11 @@ def update_map_layers(
     # Live optimization preview (during background thread execution)
     live_progress = state.get("opt_progress", {})
     if live_progress.get("running") and live_progress.get("stations_geo"):
-        for lat, lon in live_progress["stations_geo"]:
+        for i, (lat, lon) in enumerate(live_progress["stations_geo"]):
             children.append(
-                dl.CircleMarker(
-                    center=[lat, lon],
-                    radius=10,
-                    pathOptions={
-                        "color": "#ea580c",
-                        "fillColor": "#f97316",
-                        "fillOpacity": 0.85,
-                        "weight": 2,
-                    },
+                dl.Marker(
+                    position=[lat, lon],
+                    children=[dl.Tooltip(f"진행 중 #{i + 1}")],
                 )
             )
         return children
@@ -2549,18 +2725,12 @@ def update_map_layers(
                         )
                     )
 
-            # Current frame stations (orange)
-            for lat, lon in stations_geo:
+            # Current frame stations (icon markers)
+            for i, (lat, lon) in enumerate(stations_geo):
                 children.append(
-                    dl.CircleMarker(
-                        center=[lat, lon],
-                        radius=10,
-                        pathOptions={
-                            "color": "#ea580c",
-                            "fillColor": "#f97316",
-                            "fillOpacity": 0.85,
-                            "weight": 2,
-                        },
+                    dl.Marker(
+                        position=[lat, lon],
+                        children=[dl.Tooltip(f"Station #{i + 1}")],
                     )
                 )
 
@@ -3018,99 +3188,127 @@ def render_stats_panel(opt_meta, session_id):
     ]
 
 
-@app.callback(
-    Output("range-panel", "children"),
-    Input("range-meta", "data"),
-    State("session-id", "data"),
-)
-def render_range_panel(range_meta, session_id):
-    state = get_session_state(session_id)
-    results = state.get("range_results")
+# @app.callback(
+#     Output("range-panel", "children"),
+#     Input("range-meta", "data"),
+#     State("session-id", "data"),
+# )
+# def render_range_panel(range_meta, session_id):
+#     state = get_session_state(session_id)
+#     results = state.get("range_results")
 
-    if not results:
-        return []
+#     if not results:
+#         return []
 
-    df_res = pd.DataFrame(
-        [
-            {
-                "k": r["k"],
-                "score": r["score"],
-                "covered_traffic": r["covered_traffic"],
-                "covered_area": r["covered_area"],
-            }
-            for r in results
-        ]
-    )
+#     df_res = pd.DataFrame(
+#         [
+#             {
+#                 "k": r["k"],
+#                 "score": r["score"],
+#                 "covered_traffic": r["covered_traffic"],
+#                 "covered_area": r["covered_area"],
+#             }
+#             for r in results
+#         ]
+#     )
 
-    fig = go.Figure()
+#     fig = go.Figure()
 
-    fig.add_trace(
-        go.Scatter(
-            x=df_res["k"],
-            y=df_res["covered_traffic"],
-            mode="lines+markers",
-            name="Covered Traffic",
-        )
-    )
+#     fig.add_trace(
+#         go.Scatter(
+#             x=df_res["k"],
+#             y=df_res["covered_traffic"],
+#             mode="lines+markers",
+#             name="Covered Traffic",
+#         )
+#     )
 
-    fig.add_trace(
-        go.Scatter(
-            x=df_res["k"],
-            y=df_res["score"],
-            mode="lines+markers",
-            name="Score",
-            yaxis="y2",
-        )
-    )
+#     fig.add_trace(
+#         go.Scatter(
+#             x=df_res["k"],
+#             y=df_res["score"],
+#             mode="lines+markers",
+#             name="Score",
+#             yaxis="y2",
+#         )
+#     )
 
-    fig.update_layout(
-        title="범위 탐색 결과",
-        xaxis_title="Number of Stations",
-        yaxis=dict(title="Covered Traffic"),
-        yaxis2=dict(title="Score", overlaying="y", side="right"),
-        legend=dict(orientation="h"),
-        margin=dict(l=40, r=40, t=50, b=40),
-    )
+#     fig.update_layout(
+#         title="범위 탐색 결과",
+#         xaxis_title="Number of Stations",
+#         yaxis=dict(title="Covered Traffic"),
+#         yaxis2=dict(title="Score", overlaying="y", side="right"),
+#         legend=dict(orientation="h"),
+#         margin=dict(l=40, r=40, t=50, b=40),
+#     )
 
-    return html.Div(
-        [
-            html.H2("보고서"),
+#     return html.Div(
+#         [
+#             html.Div(
+#                 "범위 탐색 결과",
+#                 style={
+#                     "fontWeight": "700",
+#                     "fontSize": "13px",
+#                     "marginBottom": "6px",
+#                     "color": "#111827",
+#                 },
+#             ),
 
-            dcc.Graph(figure=fig),
+#             dcc.Graph(
+#                 figure=fig,
+#                 style={"height": "180px", "marginBottom": "6px"},
+#                 config={"displayModeBar": False},
+#             ),
 
-            html.Div(
-                [
-                    html.Label("기지국 개수 선택"),
+#             html.Div(
+#                 [
+#                     dcc.Dropdown(
+#                         id="range-k-dropdown",
+#                         options=[
+#                             {"label": f"k={int(k)}", "value": int(k)}
+#                             for k in df_res["k"]
+#                         ],
+#                         value=int(df_res.loc[df_res["score"].idxmax(), "k"]),
+#                         clearable=False,
+#                         style={"width": "110px", "display": "inline-block", "marginRight": "6px"},
+#                     ),
+#                     html.Button(
+#                         "적용",
+#                         id="apply-k-btn",
+#                         n_clicks=0,
+#                         style={
+#                             "padding": "4px 10px",
+#                             "fontSize": "12px",
+#                             "background": "#2563eb",
+#                             "color": "#fff",
+#                             "border": "0",
+#                             "borderRadius": "4px",
+#                             "cursor": "pointer",
+#                         },
+#                     ),
+#                 ],
+#                 style={"display": "flex", "alignItems": "center", "marginBottom": "6px"},
+#             ),
 
-                    dcc.Dropdown(
-                        id="range-k-dropdown",
-                        options=[
-                            {"label": f"k={int(k)}", "value": int(k)}
-                            for k in df_res["k"]
-                        ],
-                        value=int(df_res.loc[df_res["score"].idxmax(), "k"]),
-                        clearable=False,
-                        style={
-                            "width": "220px",
-                            "display": "inline-block",
-                            "marginRight": "8px",
-                        },
-                    ),
-
-                    html.Button("선택 결과 적용", id="apply-k-btn", n_clicks=0),
-                ],
-                style={"margin": "8px 0"},
-            ),
-
-            dash_table.DataTable(
-                data=df_res.round(3).to_dict("records"),
-                columns=[{"name": c, "id": c} for c in df_res.columns],
-                page_size=20,
-                style_table={"overflowX": "auto"},
-                style_cell={"fontSize": "13px", "padding": "6px"},
-            ),
-        ]
-    )
+#             dash_table.DataTable(
+#                 data=df_res.round(3).to_dict("records"),
+#                 columns=[{"name": c, "id": c} for c in df_res.columns],
+#                 page_size=10,
+#                 style_table={"overflowX": "auto", "maxHeight": "160px", "overflowY": "auto"},
+#                 style_cell={"fontSize": "11px", "padding": "4px 6px"},
+#                 style_header={"fontSize": "11px", "fontWeight": "700"},
+#             ),
+#         ],
+#         style={
+#             "background": "rgba(255,255,255,0.96)",
+#             "border": "1px solid #e5e7eb",
+#             "borderRadius": "8px",
+#             "padding": "10px 12px",
+#             "minWidth": "280px",
+#             "maxWidth": "340px",
+#             "boxShadow": "0 2px 8px rgba(0,0,0,0.15)",
+#         },
+#     )
 
 
 @app.callback(
@@ -3562,6 +3760,611 @@ def reset_algo_frame(n_clicks):
     if not n_clicks:
         raise PreventUpdate
     return 0
+
+
+# ===========================================================================
+# Sweep 콜백
+# ===========================================================================
+
+_SWEEP_INPUT_STYLE = {
+    "width": "100%", "padding": "3px 5px",
+    "borderRadius": "4px", "border": "1px solid #d1d5db", "fontSize": "12px",
+}
+
+
+@app.callback(
+    Output("sweep-params-container", "children"),
+    Output("sweep-algo-display", "children"),
+    Input("algo-select", "value"),
+)
+def render_sweep_params_ui(algo):
+    display = f"알고리즘: {algo}" if algo else ""
+    optimizer = get_optimizer(algo)
+
+    def _param_row(name, label, default_min, default_max, default_steps=5):
+        return html.Div([
+            html.Div(
+                [
+                    dcc.Checklist(
+                        id={"type": "sweep-p-enabled", "name": name},
+                        options=[{"label": "", "value": "on"}],
+                        value=[],
+                        style={"display": "inline-block", "marginRight": "6px"},
+                        inputStyle={"cursor": "pointer"},
+                    ),
+                    html.Span(label, style={"fontSize": "12px", "fontWeight": "600",
+                                            "verticalAlign": "middle"}),
+                ],
+                style={"display": "flex", "alignItems": "center", "marginBottom": "4px"},
+            ),
+            html.Div(
+                [
+                    html.Div(
+                        [html.Label("min", style={"fontSize": "10px", "color": "#6b7280",
+                                                   "display": "block", "marginBottom": "1px"}),
+                         dcc.Input(id={"type": "sweep-p-min", "name": name},
+                                   type="number", value=default_min, style=_SWEEP_INPUT_STYLE)],
+                        style={"flex": "1"},
+                    ),
+                    html.Div(
+                        [html.Label("max", style={"fontSize": "10px", "color": "#6b7280",
+                                                   "display": "block", "marginBottom": "1px"}),
+                         dcc.Input(id={"type": "sweep-p-max", "name": name},
+                                   type="number", value=default_max, style=_SWEEP_INPUT_STYLE)],
+                        style={"flex": "1"},
+                    ),
+                    html.Div(
+                        [html.Label("단계", style={"fontSize": "10px", "color": "#6b7280",
+                                                    "display": "block", "marginBottom": "1px"}),
+                         dcc.Input(id={"type": "sweep-p-steps", "name": name},
+                                   type="number", value=default_steps, min=2, max=20, step=1,
+                                   style=_SWEEP_INPUT_STYLE)],
+                        style={"flex": "1"},
+                    ),
+                ],
+                style={"display": "flex", "gap": "4px", "marginBottom": "8px", "paddingLeft": "20px"},
+            ),
+        ])
+
+    # 기지국 수는 항상 첫 번째 행으로 표시
+    rows = [
+        _param_row("__k__", "기지국 수 (k)", default_min=1, default_max=10, default_steps=5),
+        html.Hr(style={"border": "none", "borderTop": "1px solid #e5e7eb", "margin": "4px 0 8px"}),
+    ]
+
+    if optimizer:
+        for p in optimizer.hyperparams:
+            if p.kind not in ("int", "float"):
+                continue
+            rows.append(_param_row(p.name, p.label or p.name, p.min, p.max))
+
+    return rows, display
+
+
+@app.callback(
+    Output("sweep-run-btn", "disabled"),
+    Output("sweep-poll-interval", "disabled"),
+    Output("sweep-status", "children"),
+    Input("sweep-run-btn", "n_clicks"),
+    State("session-id", "data"),
+    State("algo-select", "value"),
+    State({"type": "hyperparam", "name": ALL, "kind": ALL}, "value"),
+    State({"type": "hyperparam", "name": ALL, "kind": ALL}, "id"),
+    State("n-stations", "value"),
+    State({"type": "sweep-p-enabled", "name": ALL}, "value"),
+    State({"type": "sweep-p-enabled", "name": ALL}, "id"),
+    State({"type": "sweep-p-min",     "name": ALL}, "value"),
+    State({"type": "sweep-p-max",     "name": ALL}, "value"),
+    State({"type": "sweep-p-steps",   "name": ALL}, "value"),
+    State("ui-tx-power", "value"),
+    State("ui-path-loss-exp", "value"),
+    State("ui-bandwidth-mhz", "value"),
+    State("ui-sinr-threshold", "value"),
+    State("ui-hetnet", "value"),
+    State("ui-n-macro", "value"),
+    State("ui-n-small", "value"),
+    State("ui-macro-power", "value"),
+    State("ui-small-power", "value"),
+    State("spec-mode", "value"),
+    State("capacity-default", "value"),
+    State("station-spec-table", "data"),
+    prevent_initial_call=True,
+)
+def start_sweep_job(
+    n_clicks, session_id, algo,
+    hp_values, hp_ids,
+    n_stations,
+    enabled_values, enabled_ids, min_values, max_values, steps_values,
+    ui_tx_power, ui_path_loss_exp, ui_bandwidth_mhz, ui_sinr_threshold,
+    ui_hetnet, ui_n_macro, ui_n_small, ui_macro_power, ui_small_power,
+    spec_mode, capacity_default, station_specs,
+):
+    if not n_clicks:
+        raise PreventUpdate
+
+    def _err(msg):
+        return False, True, html.Span(msg, style={"color": "#dc2626", "fontWeight": "600"})
+
+    state = get_session_state(session_id)
+
+    if state.get("env") is None:
+        return _err("먼저 환경 데이터를 생성해주세요.")
+    if state.get("sweep_progress", {}).get("running"):
+        return False, False, html.Span("이미 Sweep 실행 중입니다.", style={"color": "#b45309"})
+
+    optimizer = get_optimizer(algo)
+    hp_defaults = {p.name: p.default for p in optimizer.hyperparams}
+
+    # 활성화된 파라미터별 sweep 값 수집
+    sweep_params = []
+    for enabled_val, id_obj, v_min, v_max, n_steps in zip(
+        enabled_values, enabled_ids, min_values, max_values, steps_values
+    ):
+        if "on" not in (enabled_val or []):
+            continue
+        name = id_obj["name"]
+        # __k__ 는 hyperparam 목록 밖의 특수 변수
+        kind = "int" if name == "__k__" else next(
+            (p.kind for p in optimizer.hyperparams if p.name == name), "float"
+        )
+        fmin = safe_float(v_min, None)
+        fmax = safe_float(v_max, None)
+        if fmin is None or fmax is None or fmin >= fmax:
+            return _err(f"파라미터 '{name}'의 유효한 최솟값/최댓값을 입력해주세요 (min < max).")
+        steps = max(2, safe_int(n_steps, 5))
+        raw = np.linspace(fmin, fmax, steps)
+        vals = sorted(set(int(round(v)) for v in raw)) if kind == "int" else [float(v) for v in raw]
+        sweep_params.append({"name": name, "kind": kind, "values": vals})
+
+    if not sweep_params:
+        return _err("Sweep할 파라미터를 하나 이상 체크해주세요.")
+
+    total_combos = 1
+    for p in sweep_params:
+        total_combos *= len(p["values"])
+    if total_combos > 500:
+        return _err(f"조합 수 {total_combos}이 너무 많습니다 (최대 500). 단계 수를 줄여주세요.")
+
+    sweep_param_names = {p["name"] for p in sweep_params}
+    all_hyperparams = _parse_hyperparams(hp_values, hp_ids, hp_defaults)
+    # __k__ 는 hyperparam이 아니므로 fixed_hyperparams 에서도 제외
+    fixed_hyperparams = {k: v for k, v in all_hyperparams.items()
+                         if k not in sweep_param_names and k != "__k__"}
+
+    prop = prop_params_base(
+        path_loss_exponent=safe_float(ui_path_loss_exp, 3.5),
+        bandwidth_mhz=safe_float(ui_bandwidth_mhz, 10.0),
+        sinr_threshold_db=safe_float(ui_sinr_threshold, 3.0),
+    )
+
+    state["sweep_config"] = {
+        "algo": algo,
+        "sweep_params": sweep_params,
+        "fixed_hyperparams": fixed_hyperparams,
+        "k": safe_int(n_stations, 5),
+        "prop": prop,
+        "spec_mode": spec_mode,
+        "capacity_default": capacity_default,
+        "station_specs": station_specs,
+        "ui_tx_power": ui_tx_power,
+        "ui_hetnet": ui_hetnet,
+        "ui_n_macro": ui_n_macro,
+        "ui_n_small": ui_n_small,
+        "ui_macro_power": ui_macro_power,
+        "ui_small_power": ui_small_power,
+    }
+    state["sweep_progress"] = {
+        "running": True, "done": False, "error": None,
+        "current": 0, "total": total_combos,
+    }
+
+    threading.Thread(target=_run_sweep_thread, args=(session_id,), daemon=True).start()
+
+    param_names_str = ", ".join(p["name"] for p in sweep_params)
+    return True, False, html.Span(
+        f"Sweep 시작: [{param_names_str}] {total_combos}개 조합",
+        style={"color": "#2563eb"},
+    )
+
+
+def _run_sweep_thread(session_id: str) -> None:
+    import itertools as _itertools
+    try:
+        state = get_session_state(session_id)
+        cfg = state.get("sweep_config")
+        env = state.get("env")
+        if cfg is None or env is None:
+            state["sweep_progress"] = {"running": False, "done": False,
+                                        "error": "설정 또는 환경이 없습니다."}
+            return
+
+        algo = cfg["algo"]
+        sweep_params = cfg["sweep_params"]        # [{"name", "kind", "values"}, ...]
+        fixed_hyperparams = cfg["fixed_hyperparams"]
+        k = cfg["k"]
+        prop = cfg["prop"]
+
+        optimizer = get_optimizer(algo)
+        hetnet_enabled = normalize_triggered_bool(cfg["ui_hetnet"])
+        k_is_swept = any(p["name"] == "__k__" for p in sweep_params)
+
+        def _build_problem(k_val):
+            cap = capacity_for_k(k_val, cfg["spec_mode"], cfg["station_specs"],
+                                 safe_float(cfg["capacity_default"], 2000.0))
+            tx = tx_power_for_k(
+                k_val,
+                hetnet_enabled=hetnet_enabled,
+                ui_tx_power=safe_float(cfg["ui_tx_power"], 43.0),
+                n_macro=safe_int(cfg["ui_n_macro"], 0),
+                n_small=safe_int(cfg["ui_n_small"], 0),
+                macro_power=safe_float(cfg["ui_macro_power"], 43.0),
+                small_power=safe_float(cfg["ui_small_power"], 30.0),
+                spec_mode=cfg["spec_mode"],
+                spec_rows=cfg["station_specs"],
+            )
+            r = radius_from_tx(tx, prop)
+            prob = ProblemInput.from_env(
+                env, radius_m=r, capacity=cap,
+                station_candidate_points=env.station_candidate_points,
+                path_loss_exponent=prop["path_loss_exponent"],
+                path_loss_ref_db=prop["path_loss_ref_db"],
+                tx_power_dbm=tx,
+                bandwidth_mhz=prop["bandwidth_mhz"],
+                sinr_threshold_db=prop["sinr_threshold_db"],
+            )
+            return prob, cap, tx
+
+        # k가 고정인 경우 problem을 미리 한 번만 빌드
+        if not k_is_swept:
+            problem, cap_k, tx_k = _build_problem(k)
+        else:
+            problem, cap_k, tx_k = None, None, None
+
+        combos = list(_itertools.product(*[p["values"] for p in sweep_params]))
+        sweep_results = []
+        _last_k = None
+        for i, combo in enumerate(combos):
+            param_combo = {p["name"]: val for p, val in zip(sweep_params, combo)}
+
+            # __k__ 추출 및 problem 재빌드 (k가 바뀔 때만)
+            k_val = int(param_combo.pop("__k__", k))
+            if k_is_swept and k_val != _last_k:
+                problem, cap_k, tx_k = _build_problem(k_val)
+                _last_k = k_val
+
+            hyperparams = {**fixed_hyperparams, **param_combo}
+            result = optimizer.optimize(problem, n_stations=k_val, **hyperparams)
+            metrics = dict(result.metrics)
+            stations_geo = convert_to_geo(result.stations, problem)
+            stations_df = pd.DataFrame(stations_geo, columns=["lat", "lon"])
+
+            # 결과 param_combo에는 k를 사람이 읽기 좋은 키("k")로 저장
+            display_combo = {"k": k_val, **param_combo} if k_is_swept else param_combo
+
+            sweep_results.append({
+                "param_combo": display_combo,
+                "score": float(result.score),
+                "covered_traffic": float(metrics.get("covered_traffic", 0)),
+                "covered_area": int(metrics.get("covered_area", 0)),
+                "opt_results": {
+                    "algo": algo,
+                    "score": float(result.score),
+                    "stations_geo": stations_df.to_dict("records"),
+                    "history": result.history,
+                    "prop_params": {**prop, "tx_power_dbm": tx_k.tolist()},
+                    "capacity": cap_k.tolist() if hasattr(cap_k, "tolist") else list(cap_k),
+                },
+                "opt_stats": metrics,
+            })
+            state["sweep_progress"] = {
+                "running": True, "done": False, "error": None,
+                "current": i + 1, "total": len(combos),
+            }
+
+        state["sweep_results"] = sweep_results
+        state["sweep_progress"] = {"running": False, "done": True, "error": None,
+                                    "current": len(combos), "total": len(combos)}
+    except Exception:
+        import traceback
+        tb = traceback.format_exc()
+        log.error("sweep thread error: %s", tb)
+        try:
+            state["sweep_progress"] = {"running": False, "done": False, "error": tb}
+        except Exception:
+            pass
+
+
+@app.callback(
+    Output("sweep-status", "children", allow_duplicate=True),
+    Output("sweep-meta", "data"),
+    Output("sweep-run-btn", "disabled", allow_duplicate=True),
+    Output("sweep-poll-interval", "disabled", allow_duplicate=True),
+    Input("sweep-poll-interval", "n_intervals"),
+    State("session-id", "data"),
+    prevent_initial_call=True,
+)
+def poll_sweep_progress(n_intervals, session_id):
+    state = get_session_state(session_id)
+    progress = state.get("sweep_progress")
+
+    if not progress:
+        raise PreventUpdate
+
+    if progress.get("error"):
+        msg = html.Span(f"오류: {str(progress['error'])[:120]}",
+                        style={"color": "#dc2626", "fontSize": "11px"})
+        return msg, no_update, False, True
+
+    if progress.get("done"):
+        cur = progress.get("current", 0)
+        tot = progress.get("total", 0)
+        msg = html.Span(f"완료: {cur}/{tot}",
+                        style={"color": "#059669", "fontWeight": "600"})
+        return msg, version_token(), False, True
+
+    cur = progress.get("current", 0)
+    tot = progress.get("total", 1)
+    pct = int(cur / max(tot, 1) * 100)
+    msg = html.Div([
+        html.Span(f"{cur} / {tot} 완료 ({pct}%)",
+                  style={"fontSize": "12px", "color": "#2563eb"}),
+        html.Div(style={
+            "height": "4px", "background": "#e5e7eb", "borderRadius": "2px",
+            "marginTop": "4px",
+        }, children=[
+            html.Div(style={
+                "height": "100%", "width": f"{pct}%",
+                "background": "#2563eb", "borderRadius": "2px",
+                "transition": "width 0.3s ease",
+            })
+        ]),
+    ])
+    return msg, no_update, no_update, no_update
+
+
+@app.callback(
+    Output("sweep-result-chart", "figure"),
+    Output("sweep-result-table", "children"),
+    Input("sweep-meta", "data"),
+    State("session-id", "data"),
+)
+def render_sweep_results(sweep_meta, session_id):
+    if not sweep_meta:
+        return go.Figure(), []
+
+    state = get_session_state(session_id)
+    results = state.get("sweep_results")
+    if not results:
+        return go.Figure(), []
+
+    param_names = list(results[0]["param_combo"].keys())
+    n_params = len(param_names)
+
+    # DataFrame: 파라미터 컬럼 + score + covered_traffic
+    rows = []
+    for r in results:
+        row = {**r["param_combo"], "score": r["score"], "covered_traffic": r["covered_traffic"]}
+        rows.append(row)
+    df = pd.DataFrame(rows)
+    best_idx = int(df["score"].idxmax())
+
+    # ── 차트 분기 ──────────────────────────────────────────────
+    fig = go.Figure()
+    base_layout = dict(
+        margin={"l": 35, "r": 10, "t": 10, "b": 30},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        showlegend=False,
+    )
+
+    if n_params == 1:
+        name0 = param_names[0]
+        sizes = [14 if i == best_idx else 7 for i in range(len(df))]
+        colors = ["#dc2626" if i == best_idx else "#2563eb" for i in range(len(df))]
+        fig.add_trace(go.Scatter(
+            x=df[name0], y=df["score"],
+            mode="lines+markers",
+            marker={"size": sizes, "color": colors},
+            line={"color": "#93c5fd", "width": 1.5},
+        ))
+        fig.update_layout(
+            xaxis_title=name0, yaxis_title="Score",
+            xaxis={"gridcolor": "#e5e7eb"}, yaxis={"gridcolor": "#e5e7eb"},
+            **base_layout,
+        )
+
+    elif n_params == 2:
+        name0, name1 = param_names
+        pivot = df.pivot_table(index=name1, columns=name0, values="score", aggfunc="max")
+        fig.add_trace(go.Heatmap(
+            z=pivot.values,
+            x=[str(v) for v in pivot.columns],
+            y=[str(v) for v in pivot.index],
+            colorscale="Blues",
+            colorbar={"thickness": 10, "title": "Score"},
+        ))
+        # 최고점 마커
+        best_row = df.iloc[best_idx]
+        fig.add_trace(go.Scatter(
+            x=[str(best_row[name0])], y=[str(best_row[name1])],
+            mode="markers",
+            marker={"symbol": "star", "size": 14, "color": "#dc2626"},
+            name="Best",
+            showlegend=False,
+        ))
+        fig.update_layout(
+            xaxis_title=name0, yaxis_title=name1,
+            **base_layout,
+        )
+
+    else:  # 3개 이상 → parallel coordinates
+        dims = [
+            {"label": n, "values": df[n].tolist()}
+            for n in param_names
+        ]
+        dims.append({"label": "score", "values": df["score"].tolist()})
+        fig.add_trace(go.Parcoords(
+            line={"color": df["score"], "colorscale": "Blues", "showscale": True},
+            dimensions=dims,
+        ))
+        fig.update_layout(**base_layout)
+
+    # ── 테이블 ──────────────────────────────────────────────────
+    cols = (
+        [{"name": n, "id": n} for n in param_names]
+        + [{"name": "score", "id": "score"}, {"name": "traffic", "id": "covered_traffic"}]
+    )
+    table = dash_table.DataTable(
+        data=df.round(4).to_dict("records"),
+        columns=cols,
+        page_size=8,
+        style_table={"overflowX": "auto", "maxHeight": "160px", "overflowY": "auto"},
+        style_cell={"fontSize": "11px", "padding": "3px 6px"},
+        style_header={"fontSize": "11px", "fontWeight": "700"},
+        style_data_conditional=[
+            {
+                "if": {"row_index": best_idx},
+                "backgroundColor": "#fef2f2",
+                "fontWeight": "700",
+                "color": "#dc2626",
+            }
+        ],
+    )
+
+    return fig, table
+
+
+@app.callback(
+    Output("opt-meta", "data", allow_duplicate=True),
+    Output("sweep-status", "children", allow_duplicate=True),
+    Input("sweep-apply-btn", "n_clicks"),
+    State("session-id", "data"),
+    prevent_initial_call=True,
+)
+def apply_sweep_best(n_clicks, session_id):
+    if not n_clicks:
+        raise PreventUpdate
+
+    state = get_session_state(session_id)
+    results = state.get("sweep_results")
+    if not results:
+        return no_update, html.Span("Sweep 결과가 없습니다.",
+                                     style={"color": "#dc2626", "fontSize": "12px"})
+
+    best = max(results, key=lambda r: r["score"])
+    state["opt_results"] = best["opt_results"]
+    state["opt_stats"] = best["opt_stats"]
+
+    combo_str = ", ".join(f"{k}={v:.3g}" for k, v in best["param_combo"].items())
+    msg = html.Span(
+        f"적용 완료: {combo_str}, score={best['score']:.1f}",
+        style={"color": "#059669", "fontWeight": "600", "fontSize": "12px"},
+    )
+    return version_token(), msg
+
+
+# ── 사이드바 토글 콜백 ─────────────────────────────────────────────────────
+
+@app.callback(
+    Output("left-sidebar", "style"),
+    Output("left-sidebar-open", "data"),
+    Output("left-toggle-btn", "children"),
+    Input("left-toggle-btn", "n_clicks"),
+    State("left-sidebar-open", "data"),
+    prevent_initial_call=True,
+)
+def toggle_left_sidebar(n_clicks, is_open):
+    if is_open:
+        style = {
+            "width": "32px", "minWidth": "32px", "height": "100vh",
+            "display": "flex", "flexDirection": "column",
+            "background": "#ffffff", "borderRight": "1px solid #e5e7eb",
+            "boxSizing": "border-box", "padding": "0",
+            "transition": "width 0.2s ease, min-width 0.2s ease",
+            "overflow": "hidden",
+        }
+        return style, False, "►"
+    else:
+        style = {
+            "width": "320px", "minWidth": "320px", "height": "100vh",
+            "display": "flex", "flexDirection": "column",
+            "background": "#ffffff", "borderRight": "1px solid #e5e7eb",
+            "boxSizing": "border-box", "padding": "0",
+            "transition": "width 0.2s ease, min-width 0.2s ease",
+        }
+        return style, True, "◄ 접기"
+
+
+@app.callback(
+    Output("right-sidebar", "style"),
+    Output("right-sidebar-open", "data"),
+    Output("right-toggle-btn", "children"),
+    Input("right-toggle-btn", "n_clicks"),
+    State("right-sidebar-open", "data"),
+    prevent_initial_call=True,
+)
+def toggle_right_sidebar(n_clicks, is_open):
+    if is_open:
+        style = {
+            "width": "32px", "minWidth": "32px", "height": "100vh",
+            "display": "flex", "flexDirection": "column",
+            "borderLeft": "1px solid #e5e7eb", "background": "#f9fafb",
+            "boxSizing": "border-box",
+            "transition": "width 0.2s ease, min-width 0.2s ease",
+            "overflow": "hidden",
+        }
+        return style, False, "◄"
+    else:
+        style = {
+            "width": "420px", "minWidth": "420px", "height": "100vh",
+            "display": "flex", "flexDirection": "column",
+            "borderLeft": "1px solid #e5e7eb", "background": "#f9fafb",
+            "boxSizing": "border-box",
+            "transition": "width 0.2s ease, min-width 0.2s ease",
+        }
+        return style, True, "접기 ►"
+
+
+# ── 드래그 리사이즈 (클라이언트사이드) ─────────────────────────────────────
+
+app.clientside_callback(
+    """
+    function(leftHandleId, rightHandleId) {
+        function initResize(handleId, sidebarId, side) {
+            var handle = document.getElementById(handleId);
+            if (!handle || handle._resizeInit) return;
+            handle._resizeInit = true;
+            handle.addEventListener('mousedown', function(e) {
+                e.preventDefault();
+                var sidebar = document.getElementById(sidebarId);
+                if (!sidebar) return;
+                var startX = e.clientX;
+                var startW = sidebar.getBoundingClientRect().width;
+                var minW = 32, maxW = 600;
+                function onMove(e) {
+                    var delta = (side === 'left') ? (e.clientX - startX) : (startX - e.clientX);
+                    var newW = Math.min(maxW, Math.max(minW, startW + delta));
+                    sidebar.style.width = newW + 'px';
+                    sidebar.style.minWidth = newW + 'px';
+                }
+                function onUp() {
+                    document.removeEventListener('mousemove', onMove);
+                    document.removeEventListener('mouseup', onUp);
+                }
+                document.addEventListener('mousemove', onMove);
+                document.addEventListener('mouseup', onUp);
+            });
+        }
+        initResize('left-resize-handle', 'left-sidebar', 'left');
+        initResize('right-resize-handle', 'right-sidebar', 'right');
+        return window.dash_clientside.no_update;
+    }
+    """,
+    Output("sidebar-resize-dummy", "data"),
+    Input("left-resize-handle", "id"),
+    Input("right-resize-handle", "id"),
+    prevent_initial_call=False,
+)
 
 
 if __name__ == "__main__":
