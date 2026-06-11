@@ -1853,11 +1853,12 @@ def serve_layout():
                                                                 [
                                                                     dcc.Graph(
                                                                         id="sweep-result-chart",
-                                                                        style={"height": "300px", "marginTop": "8px"},
+                                                                        style={"height": "300px", "width": "100%", "marginTop": "8px"},
                                                                         config={"displayModeBar": True,
                                                                                 "modeBarButtonsToRemove": [
                                                                                     "lasso2d", "select2d",
                                                                                 ]},
+                                                                        responsive=True,
                                                                     ),
                                                                     html.Div(id="sweep-result-table",
                                                                              style={"marginTop": "6px",
@@ -4090,6 +4091,7 @@ def render_sweep_results(sweep_meta, session_id):
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         showlegend=False,
+        autosize=True,
     )
 
     if n_params == 1:
