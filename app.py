@@ -1302,6 +1302,36 @@ def sidebar_layout():
                         },
                     ),
 
+                    html.Details(
+                        [
+                            html.Summary("시간대 설정"),
+                            html.Label("시간 프로파일", style={"marginTop": "8px"}),
+                            dcc.Dropdown(
+                                id="time-profile-select",
+                                options=[
+                                    {"label": "고정 (Flat)", "value": "flat"},
+                                    {"label": "주거지역", "value": "주거지역"},
+                                    {"label": "업무지구", "value": "업무지구"},
+                                    {"label": "혼합", "value": "혼합"},
+                                ],
+                                value="flat",
+                                clearable=False,
+                            ),
+                            html.Label("시간 (0–23h)", style={"marginTop": "8px"}),
+                            dcc.Slider(
+                                id="time-hour-slider",
+                                min=0,
+                                max=23,
+                                step=1,
+                                value=12,
+                                marks={h: str(h) for h in [0, 6, 12, 18, 23]},
+                                tooltip={"placement": "bottom"},
+                            ),
+                        ],
+                        open=False,
+                        style={"marginTop": "8px"},
+                    ),
+
                     html.Button(
                         "가상 데이터 생성",
                         id="create-env-btn",
@@ -1366,61 +1396,14 @@ def algo_sidebar_layout():
                 ),
                 html.Div(id="hyperparam-controls"),
 
-                html.Label("기지국 개수 설정"),
-                dcc.RadioItems(
-                    id="opt-mode",
-                    options=[
-                        {"label": "고정 개수 (Fixed)", "value": "고정 개수 (Fixed)"},
-                        {"label": "범위 탐색 (Range)", "value": "범위 탐색 (Range)"},
-                    ],
-                    value="고정 개수 (Fixed)",
-                ),
-
-                html.Div(
-                    [
-                        html.Div(
-                            [
-                                html.Label("기지국 수"),
-                                dcc.Slider(
-                                    id="n-stations",
-                                    min=1,
-                                    max=100,
-                                    step=1,
-                                    value=5,
-                                    tooltip={"placement": "bottom"},
-                                ),
-                            ],
-                            id="fixed-count-controls",
-                        ),
-
-                        html.Div(
-                            [
-                                html.Label("최소 개수"),
-                                dcc.Input(
-                                    id="k-min",
-                                    type="number",
-                                    min=1,
-                                    max=100,
-                                    step=1,
-                                    value=3,
-                                    style={"width": "48%", "marginRight": "4%"},
-                                ),
-
-                                html.Label("최대 개수"),
-                                dcc.Input(
-                                    id="k-max",
-                                    type="number",
-                                    min=1,
-                                    max=200,
-                                    step=1,
-                                    value=10,
-                                    style={"width": "48%"},
-                                ),
-                            ],
-                            id="range-count-controls",
-                        ),
-                    ],
-                    id="station-count-controls",
+                html.Label("기지국 수"),
+                dcc.Slider(
+                    id="n-stations",
+                    min=1,
+                    max=100,
+                    step=1,
+                    value=5,
+                    tooltip={"placement": "bottom"},
                 ),
             ],
             open=True,
@@ -1520,6 +1503,35 @@ def algo_sidebar_layout():
                 html.Div(
                     id="noise-caption",
                     style={"fontSize": "12px", "color": "#555", "marginTop": "4px"},
+                ),
+
+                html.Label("최적화 목표", style={"marginTop": "10px"}),
+                dcc.RadioItems(
+                    id="score-mode",
+                    options=[
+                        {"label": "트래픽 커버리지", "value": "traffic"},
+                        {"label": "처리량 (Throughput)", "value": "throughput"},
+                    ],
+                    value="traffic",
+                    inline=True,
+                    style={"marginTop": "4px"},
+                ),
+                html.Div(
+                    id="spectral-eff-wrap",
+                    children=[
+                        html.Label("스펙트럼 효율 모델"),
+                        dcc.RadioItems(
+                            id="spectral-eff-mode",
+                            options=[
+                                {"label": "Shannon (이론값)", "value": "shannon"},
+                                {"label": "MCS 테이블", "value": "mcs"},
+                            ],
+                            value="shannon",
+                            inline=True,
+                            style={"marginTop": "4px"},
+                        ),
+                    ],
+                    style={"display": "none", "marginTop": "8px"},
                 ),
 
                 dcc.Checklist(
@@ -2141,17 +2153,6 @@ def toggle_obstacle_source_controls(source, object_mode):
     )
 
 
-@app.callback(
-    Output("fixed-count-controls", "style"),
-    Output("range-count-controls", "style"),
-    Input("opt-mode", "value"),
-)
-def toggle_station_count_controls(opt_mode):
-    return (
-        {"display": "block" if opt_mode == "고정 개수 (Fixed)" else "none"},
-        {"display": "block" if opt_mode == "범위 탐색 (Range)" else "none"},
-    )
-
 
 @app.callback(
     Output("hyperparam-controls", "children"),
@@ -2265,36 +2266,40 @@ def toggle_hetnet_controls(hetnet_value):
 
 
 @app.callback(
+    Output("spectral-eff-wrap", "style"),
+    Input("score-mode", "value"),
+)
+def toggle_spectral_eff_panel(score_mode):
+    if score_mode == "throughput":
+        return {"display": "block", "marginTop": "8px"}
+    return {"display": "none", "marginTop": "8px"}
+
+
+@app.callback(
     Output("station-spec-table", "data"),
     Output("spec-table-wrap", "style"),
-    Input("opt-mode", "value"),
     Input("spec-mode", "value"),
     Input("capacity-default", "value"),
     Input("ui-tx-power", "value"),
     Input("ui-hetnet", "value"),
     Input("n-stations", "value"),
-    Input("k-max", "value"),
     Input("ui-n-macro", "value"),
     Input("ui-n-small", "value"),
     State("station-spec-table", "data"),
 )
 def refresh_station_spec_table(
-    opt_mode,
     spec_mode,
     capacity_default,
     ui_tx_power,
     hetnet_value,
     n_stations,
-    k_max,
     ui_n_macro,
     ui_n_small,
     existing_rows,
 ):
     hetnet_enabled = normalize_triggered_bool(hetnet_value)
 
-    if opt_mode == "범위 탐색 (Range)":
-        target_count = safe_int(k_max, 10)
-    elif hetnet_enabled:
+    if hetnet_enabled:
         target_count = safe_int(ui_n_macro, 0) + safe_int(ui_n_small, 0)
         target_count = max(target_count, 1)
     else:
@@ -2830,16 +2835,11 @@ def _parse_hyperparams(hp_values, hp_ids, hp_defaults: dict) -> dict[str, Any]:
     return hyperparams
 
 
-def _build_k_list(opt_mode: str, hetnet_enabled: bool, n_stations, k_min, k_max,
-                  ui_n_macro, ui_n_small) -> list[int]:
-    if opt_mode == "고정 개수 (Fixed)":
-        if hetnet_enabled:
-            k = max(safe_int(ui_n_macro, 0) + safe_int(ui_n_small, 0), 1)
-            return [k]
-        return [safe_int(n_stations, 5)]
-    k0 = safe_int(k_min, 3)
-    k1 = max(k0, safe_int(k_max, 10))
-    return list(range(k0, k1 + 1))
+def _build_k_list(hetnet_enabled: bool, n_stations, ui_n_macro, ui_n_small) -> list[int]:
+    if hetnet_enabled:
+        k = max(safe_int(ui_n_macro, 0) + safe_int(ui_n_small, 0), 1)
+        return [k]
+    return [safe_int(n_stations, 5)]
 
 
 def _run_optimization_thread(
@@ -2852,6 +2852,10 @@ def _run_optimization_thread(
     capacity_default,
     station_specs,
     ui_tx_power, ui_hetnet, ui_n_macro, ui_n_small, ui_macro_power, ui_small_power,
+    score_mode: str = "traffic",
+    spectral_efficiency_mode: str = "shannon",
+    time_profile: str = "flat",
+    time_hour: int = 12,
 ) -> None:
     """백그라운드 스레드: 최적화 실행 후 세션 상태에 결과 저장."""
     try:
@@ -2861,6 +2865,10 @@ def _run_optimization_thread(
             state["opt_progress"] = {"running": False, "done": False,
                                      "error": "env가 없습니다. 먼저 데이터를 생성하세요."}
             return
+
+        # 시간대 설정 적용
+        env.time_profile = time_profile or "flat"
+        env.time_hour = max(0, min(23, int(time_hour or 12)))
 
         start_time = time.time()
         optimizer = get_optimizer(algo)
@@ -2893,6 +2901,8 @@ def _run_optimization_thread(
                 noise_floor_dbm=prop["noise_floor_dbm"],
                 sinr_threshold_db=prop["sinr_threshold_db"],
                 bandwidth_mhz=prop["bandwidth_mhz"],
+                score_mode=score_mode,
+                spectral_efficiency_mode=spectral_efficiency_mode,
             )
 
             def _progress_cb(it, total, best_stations_local, best_score,
@@ -3024,10 +3034,7 @@ def _make_progress_html(algo: str, k_cur: int, k_tot: int,
     State("algo-select", "value"),
     State({"type": "hyperparam", "name": ALL, "kind": ALL}, "value"),
     State({"type": "hyperparam", "name": ALL, "kind": ALL}, "id"),
-    State("opt-mode", "value"),
     State("n-stations", "value"),
-    State("k-min", "value"),
-    State("k-max", "value"),
     State("spec-mode", "value"),
     State("capacity-default", "value"),
     State("station-spec-table", "data"),
@@ -3040,15 +3047,20 @@ def _make_progress_html(algo: str, k_cur: int, k_tot: int,
     State("ui-n-small", "value"),
     State("ui-macro-power", "value"),
     State("ui-small-power", "value"),
+    State("score-mode", "value"),
+    State("spectral-eff-mode", "value"),
+    State("time-profile-select", "value"),
+    State("time-hour-slider", "value"),
     prevent_initial_call=True,
 )
 def start_optimization_job(
     n_clicks, session_id, algo,
     hp_values, hp_ids,
-    opt_mode, n_stations, k_min, k_max,
+    n_stations,
     spec_mode, capacity_default, station_specs,
     ui_tx_power, ui_path_loss_exp, ui_bandwidth_mhz, ui_sinr_threshold,
     ui_hetnet, ui_n_macro, ui_n_small, ui_macro_power, ui_small_power,
+    score_mode, spectral_eff_mode, time_profile, time_hour,
 ):
     if not n_clicks:
         raise PreventUpdate
@@ -3065,8 +3077,7 @@ def start_optimization_job(
     hp_defaults = {p.name: p.default for p in optimizer.hyperparams}
     hyperparams = _parse_hyperparams(hp_values, hp_ids, hp_defaults)
     hetnet_enabled = normalize_triggered_bool(ui_hetnet)
-    k_list = _build_k_list(opt_mode, hetnet_enabled, n_stations, k_min, k_max,
-                           ui_n_macro, ui_n_small)
+    k_list = _build_k_list(hetnet_enabled, n_stations, ui_n_macro, ui_n_small)
     prop = prop_params_base(
         path_loss_exponent=safe_float(ui_path_loss_exp, 3.5),
         bandwidth_mhz=safe_float(ui_bandwidth_mhz, 10.0),
@@ -3087,7 +3098,11 @@ def start_optimization_job(
         args=(session_id, algo, hyperparams, k_list, prop,
               spec_mode, capacity_default, station_specs,
               ui_tx_power, ui_hetnet, ui_n_macro, ui_n_small,
-              ui_macro_power, ui_small_power),
+              ui_macro_power, ui_small_power,
+              score_mode or "traffic",
+              spectral_eff_mode or "shannon",
+              time_profile or "flat",
+              int(time_hour or 12)),
         daemon=True,
     ).start()
 
@@ -3179,11 +3194,14 @@ def render_stats_panel(opt_meta, session_id):
 
     mean_sinr = stats.get("mean_sinr_db")
 
+    total_tp = float(stats.get("total_throughput_mbps", 0.0))
+
     return [
         metric_card("총 트래픽", f"{int(total_t)}"),
         metric_card("커버된 트래픽", f"{int(cov_t)} ({traffic_cov_pct:.1f}%)"),
         metric_card("커버된 면적", f"{int(cov_a)} 격자 ({area_cov_pct:.1f}%)"),
         metric_card("평균 SINR", f"{mean_sinr:.1f} dB" if mean_sinr is not None else "-"),
+        metric_card("총 처리량", f"{total_tp:.1f} Mbps"),
         metric_card("기지국 수", f"{stats.get('n_stations', '-')}"),
     ]
 
@@ -3868,6 +3886,10 @@ def render_sweep_params_ui(algo):
     State("spec-mode", "value"),
     State("capacity-default", "value"),
     State("station-spec-table", "data"),
+    State("score-mode", "value"),
+    State("spectral-eff-mode", "value"),
+    State("time-profile-select", "value"),
+    State("time-hour-slider", "value"),
     prevent_initial_call=True,
 )
 def start_sweep_job(
@@ -3878,6 +3900,7 @@ def start_sweep_job(
     ui_tx_power, ui_path_loss_exp, ui_bandwidth_mhz, ui_sinr_threshold,
     ui_hetnet, ui_n_macro, ui_n_small, ui_macro_power, ui_small_power,
     spec_mode, capacity_default, station_specs,
+    score_mode, spectral_eff_mode, time_profile, time_hour,
 ):
     if not n_clicks:
         raise PreventUpdate
@@ -3952,6 +3975,10 @@ def start_sweep_job(
         "ui_n_small": ui_n_small,
         "ui_macro_power": ui_macro_power,
         "ui_small_power": ui_small_power,
+        "score_mode": score_mode or "traffic",
+        "spectral_efficiency_mode": spectral_eff_mode or "shannon",
+        "time_profile": time_profile or "flat",
+        "time_hour": int(time_hour or 12),
     }
     state["sweep_progress"] = {
         "running": True, "done": False, "error": None,
@@ -3983,6 +4010,12 @@ def _run_sweep_thread(session_id: str) -> None:
         fixed_hyperparams = cfg["fixed_hyperparams"]
         k = cfg["k"]
         prop = cfg["prop"]
+        score_mode = cfg.get("score_mode", "traffic")
+        spectral_efficiency_mode = cfg.get("spectral_efficiency_mode", "shannon")
+
+        # 시간대 설정 적용
+        env.time_profile = cfg.get("time_profile", "flat")
+        env.time_hour = max(0, min(23, int(cfg.get("time_hour", 12))))
 
         optimizer = get_optimizer(algo)
         hetnet_enabled = normalize_triggered_bool(cfg["ui_hetnet"])
@@ -4011,6 +4044,8 @@ def _run_sweep_thread(session_id: str) -> None:
                 tx_power_dbm=tx,
                 bandwidth_mhz=prop["bandwidth_mhz"],
                 sinr_threshold_db=prop["sinr_threshold_db"],
+                score_mode=score_mode,
+                spectral_efficiency_mode=spectral_efficiency_mode,
             )
             return prob, cap, tx
 
