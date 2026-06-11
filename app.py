@@ -41,7 +41,7 @@ import dash_leaflet as dl
 from dash_extensions.javascript import assign
 from geopy.distance import geodesic
 
-from environment import SyntheticEnvironment
+from environment import SyntheticEnvironment, TIME_PROFILES
 from obstacle_sources import (
     filter_polygons,
     geojson_to_polygons,
@@ -546,6 +546,13 @@ def env_dataframe_for_current_frame(env: SyntheticEnvironment) -> pd.DataFrame:
         flat_traffic = raw_series[env.dynamic_frame_index].ravel()
     else:
         flat_traffic = env.get_raw_traffic_map().ravel()
+
+    # 시각화도 최적화와 동일한 시간 프로파일 스케일 적용
+    profile = TIME_PROFILES.get(env.time_profile, TIME_PROFILES["flat"])
+    hour = max(0, min(23, int(env.time_hour)))
+    time_scale = float(profile[hour])
+    if time_scale != 1.0:
+        flat_traffic = flat_traffic * time_scale
 
     obstacle_mask = env.get_obstacle_mask().ravel()
 
