@@ -115,6 +115,7 @@ class SyntheticEnvironment:
         self.traffic_series = None
         self.dynamic_frame_index = 0
         self._obstacle_mask = np.zeros((self.rows, self.cols), dtype=bool)
+        self._obstacle_mask_dirty = True
 
         # 시간대별 트래픽 변동
         self.time_hour: int = 12
@@ -324,6 +325,7 @@ class SyntheticEnvironment:
         # 장애물 생성 (겹침 방지 포함)
         # pattern: 'random', 'circle', 'strip', 'grid', 'mixed'
         self.obstacles = []
+        self._obstacle_mask_dirty = True
         max_attempts = 50 # 겹치지 않는 위치를 찾기 위한 최대 시도 횟수
         
         count = 0
@@ -495,7 +497,7 @@ class SyntheticEnvironment:
                 continue
             self.obstacles.append(polygon)
         self._convert_obstacles_to_geo()
-        self._obstacle_mask = np.zeros((self.rows, self.cols), dtype=bool)
+        self._obstacle_mask_dirty = True
         self.remask_traffic()
 
     def replace_obstacles(self, polygons: Iterable[Polygon]):
@@ -507,6 +509,7 @@ class SyntheticEnvironment:
         self.obstacles = []
         self.obstacles_geo = []
         self._obstacle_mask = np.zeros((self.rows, self.cols), dtype=bool)
+        self._obstacle_mask_dirty = False  # already zeroed above
         self.remask_traffic()
 
     def remask_traffic(self):
@@ -611,21 +614,22 @@ class SyntheticEnvironment:
         self.remask_traffic()
 
     def get_obstacle_mask(self):
-        self._obstacle_mask = np.zeros((self.rows, self.cols), dtype=bool)
-        if not self.obstacles:
-            self._obstacle_mask[:] = False
+        if not self._obstacle_mask_dirty:
             return self._obstacle_mask
 
-        flat_x = self.x_grid.ravel()
-        flat_y = self.y_grid.ravel()
-        mask = np.zeros(flat_x.shape, dtype=bool)
-        for poly in self.obstacles:
-            if poly is None or poly.is_empty:
-                continue
-            in_poly = contains(poly.buffer(1e-6), flat_x, flat_y)
-            mask = mask | in_poly
+        self._obstacle_mask = np.zeros((self.rows, self.cols), dtype=bool)
+        if self.obstacles:
+            flat_x = self.x_grid.ravel()
+            flat_y = self.y_grid.ravel()
+            mask = np.zeros(flat_x.shape, dtype=bool)
+            for poly in self.obstacles:
+                if poly is None or poly.is_empty:
+                    continue
+                in_poly = contains(poly.buffer(1e-6), flat_x, flat_y)
+                mask = mask | in_poly
+            self._obstacle_mask = mask.reshape(self.rows, self.cols)
 
-        self._obstacle_mask = mask.reshape(self.rows, self.cols)
+        self._obstacle_mask_dirty = False
         return self._obstacle_mask
 
     def get_station_feasible_points(self):
