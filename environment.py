@@ -176,6 +176,56 @@ class SyntheticEnvironment:
         self.remask_traffic()
         return self.traffic_map
 
+    def generate_traffic_pattern_density(
+        self,
+        area_demand_mbps_km2: float,
+        pattern: str,
+        params: dict | None = None,
+        rng: "np.random.Generator | None" = None,
+    ):
+        """면적 트래픽 밀도 (Mbps/km²) 기반 트래픽 맵 생성.
+
+        셀 수요 [Mbps] = area_demand_mbps_km2 × (resolution_m / 1000)²
+        배경 트래픽: 피크의 10% 플로어 보장.
+        """
+        from patterns import generate_pattern
+        if rng is None:
+            rng = np.random.default_rng()
+        normalized = generate_pattern(self.rows, self.cols, pattern=pattern,
+                                      rng=rng, params=params)
+        cell_area_km2 = (self.resolution_m / 1000.0) ** 2
+        cell_peak_mbps = float(area_demand_mbps_km2) * cell_area_km2
+        # 배경 트래픽 플로어 10% 보장
+        self.traffic_map = np.maximum(0.1, normalized) * cell_peak_mbps
+        self._raw_traffic_map = self.traffic_map.copy()
+        self.traffic_series = None
+        self._raw_traffic_series = None
+        self.dynamic_frame_index = 0
+        self.remask_traffic()
+        return self.traffic_map
+
+    def generate_dynamic_traffic_pattern_density(
+        self,
+        area_demand_mbps_km2: float,
+        pattern: str,
+        time_steps: int = 12,
+        variation: float = 0.25,
+        drift_m: float = 300.0,
+        params: dict | None = None,
+    ):
+        """면적 밀도 기반 동적 트래픽 생성."""
+        cell_area_km2 = (self.resolution_m / 1000.0) ** 2
+        cell_peak_mbps = float(area_demand_mbps_km2) * cell_area_km2
+        return self.generate_dynamic_traffic_pattern(
+            pattern=pattern,
+            time_steps=time_steps,
+            max_intensity=cell_peak_mbps * 0.9,
+            base_intensity=cell_peak_mbps * 0.1,
+            variation=variation,
+            drift_m=drift_m,
+            params=params,
+        )
+
     def generate_dynamic_traffic_pattern(self, pattern: str, time_steps=12, max_intensity: float = 100.0,
                                         base_intensity: float = 10.0, variation: float = 0.25,
                                         drift_m: float = 300.0, params: dict | None = None):

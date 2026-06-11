@@ -1077,25 +1077,25 @@ def sidebar_layout():
                                 value=PATTERN_CHOICES[0],
                             ),
 
-                            html.Label("기초 트래픽량 (base)"),
+                            html.Label("총 면적 수요 (Mbps/km²)"),
                             dcc.Slider(
-                                id="base-intensity",
-                                min=0,
-                                max=50,
+                                id="area-demand-mbps-km2",
+                                min=1,
+                                max=200,
                                 step=1,
-                                value=10,
+                                value=25,
+                                marks={1: "1", 25: "25", 50: "50",
+                                       100: "100", 200: "200"},
                                 tooltip={"placement": "bottom"},
                             ),
-
-                            html.Label("최대 트래픽량 (max)"),
-                            dcc.Slider(
-                                id="max-intensity",
-                                min=50,
-                                max=500,
-                                step=10,
-                                value=100,
-                                tooltip={"placement": "bottom"},
+                            html.Div(
+                                id="area-demand-cell-display",
+                                style={"fontSize": "12px", "color": "#6b7280",
+                                       "marginTop": "4px"},
                             ),
+                            # 하위 호환용 숨김 입력 (콜백 참조 유지)
+                            dcc.Input(id="base-intensity", type="hidden", value=10),
+                            dcc.Input(id="max-intensity", type="hidden", value=100),
 
                             html.Div(
                                 [
@@ -1432,17 +1432,6 @@ def algo_sidebar_layout():
                     value=15,
                     tooltip={"placement": "bottom"},
                     marks={0: "0%", 15: "15%", 30: "30%", 50: "50%"},
-                ),
-
-                html.Label("트래픽 단위당 수요 (Mbps/unit)"),
-                dcc.Input(
-                    id="traffic-mbps-per-unit",
-                    type="number",
-                    min=0.001,
-                    max=100.0,
-                    step=0.001,
-                    value=0.05,
-                    style={"width": "100%"},
                 ),
 
                 html.Div(
@@ -2315,6 +2304,19 @@ def auto_compute_capacity(bandwidth_mhz, overhead_ratio):
 
 
 @app.callback(
+    Output("area-demand-cell-display", "children"),
+    Input("area-demand-mbps-km2", "value"),
+    Input("resolution-m", "value"),
+)
+def update_area_demand_display(area_demand, resolution_m):
+    density = safe_float(area_demand, 25.0)
+    res = safe_float(resolution_m, 100.0)
+    cell_km2 = (res / 1000.0) ** 2
+    cell_mbps = density * cell_km2
+    return f"셀당 수요: {cell_mbps:.3f} Mbps  (해상도 {int(res)}m 기준)"
+
+
+@app.callback(
     Output("station-spec-table", "data"),
     Output("spec-table-wrap", "style"),
     Input("spec-mode", "value"),
@@ -2374,6 +2376,7 @@ def refresh_station_spec_table(
     State("sim-map", "zoom"),
     State("resolution-m", "value"),
     State("traffic-pattern", "value"),
+    State("area-demand-mbps-km2", "value"),
     State("base-intensity", "value"),
     State("max-intensity", "value"),
     State("dynamic-traffic", "value"),
@@ -2401,6 +2404,7 @@ def create_environment(
     zoom,
     resolution_m,
     traffic_pattern,
+    area_demand_mbps_km2,
     base_intensity,
     max_intensity,
     dynamic_traffic,
@@ -2461,29 +2465,20 @@ def create_environment(
                     "sigma_y": sigma_cells,
                 }
 
-            env.generate_dynamic_traffic_pattern(
+            env.generate_dynamic_traffic_pattern_density(
+                area_demand_mbps_km2=safe_float(area_demand_mbps_km2, 25.0),
                 pattern=traffic_pattern,
                 time_steps=safe_int(dynamic_time_steps, 12),
-                max_intensity=safe_float(max_intensity, 100.0),
-                base_intensity=safe_float(base_intensity, 10.0),
                 variation=safe_float(dynamic_variation, 0.25),
                 drift_m=safe_float(dynamic_drift_m, 300.0),
                 params=pattern_params,
             )
 
-        elif traffic_pattern == "multi_hotspot":
-            env.generate_traffic(
-                num_hotspots=safe_int(num_hotspots, 5),
-                spread_m=safe_float(spread_m, 300.0),
-                base_intensity=safe_float(base_intensity, 10.0),
-                max_intensity=safe_float(max_intensity, 100.0),
-            )
-
         else:
-            env.generate_traffic_pattern(
+            env.generate_traffic_pattern_density(
+                area_demand_mbps_km2=safe_float(area_demand_mbps_km2, 25.0),
                 pattern=traffic_pattern,
-                max_intensity=safe_float(max_intensity, 100.0),
-                base_intensity=safe_float(base_intensity, 10.0),
+                params=pattern_params,
             )
 
         selected_osm_types = osm_types or []
@@ -3092,7 +3087,6 @@ def _make_progress_html(algo: str, k_cur: int, k_tot: int,
     State("spectral-eff-mode", "value"),
     State("time-profile-select", "value"),
     State("time-hour-slider", "value"),
-    State("traffic-mbps-per-unit", "value"),
     prevent_initial_call=True,
 )
 def start_optimization_job(
@@ -3103,7 +3097,6 @@ def start_optimization_job(
     ui_tx_power, ui_path_loss_exp, ui_bandwidth_mhz, ui_sinr_threshold,
     ui_hetnet, ui_n_macro, ui_n_small, ui_macro_power, ui_small_power,
     score_mode, spectral_eff_mode, time_profile, time_hour,
-    traffic_mbps_per_unit,
 ):
     if not n_clicks:
         raise PreventUpdate
@@ -3146,7 +3139,7 @@ def start_optimization_job(
               spectral_eff_mode or "shannon",
               time_profile or "flat",
               int(time_hour or 12),
-              safe_float(traffic_mbps_per_unit, 0.05)),
+              1.0),
         daemon=True,
     ).start()
 
@@ -3937,7 +3930,6 @@ def render_sweep_params_ui(algo):
     State("spectral-eff-mode", "value"),
     State("time-profile-select", "value"),
     State("time-hour-slider", "value"),
-    State("traffic-mbps-per-unit", "value"),
     prevent_initial_call=True,
 )
 def start_sweep_job(
@@ -3949,7 +3941,6 @@ def start_sweep_job(
     ui_hetnet, ui_n_macro, ui_n_small, ui_macro_power, ui_small_power,
     spec_mode, capacity_default, station_specs,
     score_mode, spectral_eff_mode, time_profile, time_hour,
-    traffic_mbps_per_unit,
 ):
     if not n_clicks:
         raise PreventUpdate
@@ -4028,7 +4019,7 @@ def start_sweep_job(
         "spectral_efficiency_mode": spectral_eff_mode or "shannon",
         "time_profile": time_profile or "flat",
         "time_hour": int(time_hour or 12),
-        "weight_scale": safe_float(traffic_mbps_per_unit, 0.05),
+        "weight_scale": 1.0,
     }
     state["sweep_progress"] = {
         "running": True, "done": False, "error": None,
