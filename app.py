@@ -677,6 +677,11 @@ def build_traffic_geojson(
     traffics = df["traffic"].to_numpy()
     is_obstacles = df["is_obstacle"].to_numpy(dtype=bool)
 
+    # 실제 트래픽 범위로 정규화 (단위가 Mbps든 추상값이든 동일하게 동작)
+    max_traffic = float(traffics.max()) if len(traffics) > 0 else 1.0
+    if max_traffic <= 0:
+        max_traffic = 1.0
+
     features = []
 
     for idx in range(len(df)):
@@ -685,8 +690,9 @@ def build_traffic_geojson(
         traffic = float(traffics[idx])
         is_obstacle = bool(is_obstacles[idx])
 
+        norm = traffic / max_traffic  # 0~1 범위
         color = "#ff0000"
-        opacity = min(traffic / 150.0, 0.8)
+        opacity = min(norm * 0.8, 0.8)
         status_text = "N/A"
 
         if map_layer_mode == "커버리지 상태 (Status)" and len(status_list) > idx:
@@ -699,7 +705,7 @@ def build_traffic_geojson(
             else:
                 color = "#ff0000"
 
-            opacity = min(traffic / 150.0 + 0.2, 0.9)
+            opacity = min(norm * 0.7 + 0.2, 0.9)
             status_text = {0: "Uncovered", 1: "Covered", 2: "Overloaded"}.get(status, "N/A")
 
             if is_obstacle:
