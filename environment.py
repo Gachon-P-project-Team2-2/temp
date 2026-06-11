@@ -540,7 +540,7 @@ class SyntheticEnvironment:
             'lon': self.lon_grid.ravel(),
             'traffic': self.traffic_map.ravel()
         })
-        return df[df['traffic'] > 0.1]
+        return df[df['traffic'] > 0]
 
     def get_local_data(self):
         # Local 좌표계 Array 반환 (좌하단 기준). 장애물 마스킹이 반영된 traffic_map 기준.
@@ -553,7 +553,7 @@ class SyntheticEnvironment:
         if time_scale != 1.0:
             traffic = np.asarray(traffic) * time_scale
 
-        mask = np.asarray(traffic).ravel() > 0.1
+        mask = np.asarray(traffic).ravel() > 0
 
         x_vals = self.x_grid.ravel()[mask]
         y_vals = self.y_grid.ravel()[mask]
@@ -567,8 +567,8 @@ class SyntheticEnvironment:
         # y: 반전 (Top -> Bottom, 즉 y=0이 최상단)
         # 장애물 마스킹이 반영된 traffic_map 기준.
         traffic = self.traffic_map
-        mask = np.asarray(traffic).ravel() > 0.1
-        
+        mask = np.asarray(traffic).ravel() > 0
+
         x_vals = self.x_grid.ravel()[mask]
         y_vals_original = self.y_grid.ravel()[mask]
         traffic_vals = np.asarray(traffic).ravel()[mask]

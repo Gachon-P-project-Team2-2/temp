@@ -363,12 +363,19 @@ def compute_metrics(stations: np.ndarray, problem: ProblemInput) -> dict:
         np.add.at(station_loads, serving_idx[valid_indices], problem.weights[valid_indices])
     effective_loads = np.minimum(station_loads, capacities)
 
-    # 처리량 계산 (Shannon 또는 MCS)
-    eta = spectral_efficiency(best_sinr_db, se_mode)            # (N,)
-    cell_tp = problem.bandwidth_mhz * eta                        # Mbps
+    # 처리량 계산: 기지국당 평균 스펙트럼 효율 × 대역폭 (대역폭은 셀 수와 무관하게 공유)
+    eta = spectral_efficiency(best_sinr_db, se_mode)  # (N,)
     station_tp = np.zeros(K)
     if len(valid_indices) > 0:
-        np.add.at(station_tp, serving_idx[valid_indices], cell_tp[valid_indices])
+        station_eta_sum = np.zeros(K)
+        station_count = np.zeros(K)
+        np.add.at(station_eta_sum, serving_idx[valid_indices], eta[valid_indices])
+        np.add.at(station_count, serving_idx[valid_indices], 1.0)
+        mean_eta = np.where(station_count > 0, station_eta_sum / station_count, 0.0)
+        station_capacity_tp = problem.bandwidth_mhz * mean_eta  # Mbps
+        station_demands = np.zeros(K)
+        np.add.at(station_demands, serving_idx[valid_indices], problem.weights[valid_indices])
+        station_tp = np.minimum(station_capacity_tp, station_demands)
 
     mean_sinr_db = float(np.mean(best_sinr_db[is_covered])) if np.any(is_covered) else None
 

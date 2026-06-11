@@ -31,9 +31,15 @@ def calculate_score(stations: np.ndarray, problem: ProblemInput) -> float:
     if score_mode == "throughput":
         se_mode = getattr(problem, "spectral_efficiency_mode", "shannon")
         eta = spectral_efficiency(best_sinr_db[valid_indices], se_mode)
-        cell_tp = problem.bandwidth_mhz * eta
-        station_tp = np.zeros(K)
-        np.add.at(station_tp, serving_idx[valid_indices], cell_tp)
+        station_eta_sum = np.zeros(K)
+        station_count = np.zeros(K)
+        np.add.at(station_eta_sum, serving_idx[valid_indices], eta)
+        np.add.at(station_count, serving_idx[valid_indices], 1.0)
+        mean_eta = np.where(station_count > 0, station_eta_sum / station_count, 0.0)
+        station_capacity_tp = problem.bandwidth_mhz * mean_eta
+        station_demands = np.zeros(K)
+        np.add.at(station_demands, serving_idx[valid_indices], problem.weights[valid_indices])
+        station_tp = np.minimum(station_capacity_tp, station_demands)
         return float(station_tp.sum())
 
     # traffic (default)
