@@ -4096,6 +4096,7 @@ def _run_sweep_thread(session_id: str) -> None:
                 tx_power_dbm=tx,
                 bandwidth_mhz=prop["bandwidth_mhz"],
                 sinr_threshold_db=prop["sinr_threshold_db"],
+                noise_floor_dbm=prop["noise_floor_dbm"],
                 score_mode=score_mode,
                 spectral_efficiency_mode=spectral_efficiency_mode,
                 weight_scale=weight_scale,
