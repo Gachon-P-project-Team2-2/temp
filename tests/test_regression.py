@@ -92,7 +92,7 @@ def test_app_loads(page: Page):
     expect(page.get_by_text("시뮬레이터 제어")).to_be_visible()
     expect(page.get_by_text("1. 환경 설정")).to_be_visible()
     expect(page.get_by_text("2. 시각화 설정")).to_be_visible()
-    expect(page.get_by_text("3. 계산 알고리즘")).to_be_visible()
+    expect(page.get_by_text("계산 알고리즘")).to_be_visible()
     expect(page.get_by_role("button", name="가상 데이터 생성")).to_be_visible()
 
 

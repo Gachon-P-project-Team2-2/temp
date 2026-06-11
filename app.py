@@ -2428,18 +2428,18 @@ def create_environment(
 
     state = get_session_state(session_id)
 
-    if not (isinstance(custom_region, dict) and custom_region.get("width_km") and custom_region.get("height_km")):
-        no_upd = no_update
-        return no_upd, no_upd, no_upd, html.Span(
-            "영역을 먼저 지정해주세요. 지도에서 사각형을 그려 시뮬레이션 영역을 설정하세요.",
-            style={"color": "#dc2626", "fontWeight": "600"},
-        )
+    # 영역이 미지정이면 기본 가상 영역(서울 중심, 5 km × 5 km) 사용
+    using_default_region = not (isinstance(custom_region, dict) and custom_region.get("width_km") and custom_region.get("height_km"))
 
     try:
-        center_lat = float(custom_region["center_lat"])
-        center_lon = float(custom_region["center_lon"])
-        width_km = max(float(custom_region["width_km"]), 0.1)
-        height_km = max(float(custom_region["height_km"]), 0.1)
+        if using_default_region:
+            center_lat, center_lon = 37.5665, 126.9780
+            width_km, height_km = 5.0, 5.0
+        else:
+            center_lat = float(custom_region["center_lat"])
+            center_lon = float(custom_region["center_lon"])
+            width_km = max(float(custom_region["width_km"]), 0.1)
+            height_km = max(float(custom_region["height_km"]), 0.1)
 
         env = SyntheticEnvironment(
             center_lat=center_lat,
@@ -2451,20 +2451,19 @@ def create_environment(
 
         is_dynamic = normalize_triggered_bool(dynamic_traffic)
 
+        pattern_params: dict = {}
+        if traffic_pattern == "multi_hotspot":
+            sigma_cells = max(
+                safe_float(spread_m, 300.0) / max(safe_float(resolution_m, 100.0), 1.0),
+                1.0,
+            )
+            pattern_params = {
+                "n_centers": safe_int(num_hotspots, 5),
+                "sigma_x": sigma_cells,
+                "sigma_y": sigma_cells,
+            }
+
         if is_dynamic:
-            pattern_params = {}
-
-            if traffic_pattern == "multi_hotspot":
-                sigma_cells = max(
-                    safe_float(spread_m, 300.0) / max(safe_float(resolution_m, 100.0), 1.0),
-                    1.0,
-                )
-                pattern_params = {
-                    "n_centers": safe_int(num_hotspots, 5),
-                    "sigma_x": sigma_cells,
-                    "sigma_y": sigma_cells,
-                }
-
             env.generate_dynamic_traffic_pattern_density(
                 area_demand_mbps_km2=safe_float(area_demand_mbps_km2, 25.0),
                 pattern=traffic_pattern,
@@ -2515,8 +2514,9 @@ def create_environment(
 
         applied_type = "기지국 후보" if osm_object_mode == "기지국 후보로 사용" else "장애물"
 
+        region_note = " (기본 영역)" if using_default_region else ""
         msg = (
-            f"가상 환경 생성 완료 | 영역: {width_km:.2f} km × {height_km:.2f} km | "
+            f"가상 환경 생성 완료{region_note} | 영역: {width_km:.2f} km × {height_km:.2f} km | "
             f"{obstacle_source}({applied_type}): 원본 {raw_count}개 중 {applied_count}개 적용"
         )
 
