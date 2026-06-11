@@ -1661,6 +1661,8 @@ def serve_layout():
             dcc.Interval(id="opt-poll-interval", interval=750, disabled=True, n_intervals=0),
             dcc.Store(id="sweep-meta"),
             dcc.Interval(id="sweep-poll-interval", interval=500, disabled=True, n_intervals=0),
+            dcc.Store(id="algo-compare-meta"),
+            dcc.Interval(id="algo-compare-poll-interval", interval=1200, disabled=True, n_intervals=0),
             dcc.Store(id="left-sidebar-open", data=True),
             dcc.Store(id="right-sidebar-open", data=True),
             dcc.Store(id="sidebar-resize-dummy"),
@@ -1915,6 +1917,46 @@ def serve_layout():
                                                             ),
                                                         ],
                                                         open=True,
+                                                        style={"marginBottom": "12px"},
+                                                    ),
+
+                                                    # ── 알고리즘 비교 ──────────────────────
+                                                    html.Details(
+                                                        [
+                                                            html.Summary(
+                                                                html.H3("알고리즘 비교",
+                                                                        style={"display": "inline", "margin": 0})
+                                                            ),
+                                                            html.Div([
+                                                                html.Label("비교할 알고리즘",
+                                                                           style={"fontSize": "12px",
+                                                                                  "fontWeight": "600",
+                                                                                  "marginBottom": "6px",
+                                                                                  "display": "block"}),
+                                                                dcc.Checklist(
+                                                                    id="algo-compare-select",
+                                                                    options=[{"label": cls.name, "value": cls.name}
+                                                                             for cls in REGISTRY],
+                                                                    value=[cls.name for cls in REGISTRY],
+                                                                    inputStyle={"marginRight": "5px"},
+                                                                    labelStyle={"display": "block",
+                                                                                "fontSize": "12px",
+                                                                                "marginBottom": "3px"},
+                                                                ),
+                                                                html.Button(
+                                                                    "알고리즘 비교 실행",
+                                                                    id="algo-compare-run-btn",
+                                                                    n_clicks=0,
+                                                                    className="primary-button",
+                                                                    style={"marginTop": "8px", "width": "100%"},
+                                                                ),
+                                                                html.Div(id="algo-compare-status",
+                                                                         style={"marginTop": "6px",
+                                                                                "fontSize": "12px"}),
+                                                                html.Div(id="algo-compare-results"),
+                                                            ]),
+                                                        ],
+                                                        open=False,
                                                         style={"marginBottom": "12px"},
                                                     ),
                                                 ],
@@ -4347,6 +4389,392 @@ def apply_sweep_best(n_clicks, session_id):
     combo_str = ", ".join(f"{k}={v:.3g}" for k, v in best["param_combo"].items())
     msg = html.Span(
         f"적용 완료: {combo_str}, score={best['score']:.1f}",
+        style={"color": "#059669", "fontWeight": "600", "fontSize": "12px"},
+    )
+    return version_token(), msg
+
+
+# ── 알고리즘 비교 ─────────────────────────────────────────────────────────
+
+@app.callback(
+    Output("algo-compare-run-btn", "disabled"),
+    Output("algo-compare-poll-interval", "disabled"),
+    Output("algo-compare-status", "children"),
+    Input("algo-compare-run-btn", "n_clicks"),
+    State("session-id", "data"),
+    State("algo-compare-select", "value"),
+    State("n-stations", "value"),
+    State("ui-tx-power", "value"),
+    State("ui-path-loss-exp", "value"),
+    State("ui-bandwidth-mhz", "value"),
+    State("ui-sinr-threshold", "value"),
+    State("ui-hetnet", "value"),
+    State("ui-n-macro", "value"),
+    State("ui-n-small", "value"),
+    State("ui-macro-power", "value"),
+    State("ui-small-power", "value"),
+    State("spec-mode", "value"),
+    State("capacity-default", "value"),
+    State("station-spec-table", "data"),
+    State("score-mode", "value"),
+    State("spectral-eff-mode", "value"),
+    State("time-profile-select", "value"),
+    State("time-hour-slider", "value"),
+    prevent_initial_call=True,
+)
+def start_algo_compare_job(
+    n_clicks, session_id, selected_algos,
+    n_stations,
+    ui_tx_power, ui_path_loss_exp, ui_bandwidth_mhz, ui_sinr_threshold,
+    ui_hetnet, ui_n_macro, ui_n_small, ui_macro_power, ui_small_power,
+    spec_mode, capacity_default, station_specs,
+    score_mode, spectral_eff_mode, time_profile, time_hour,
+):
+    if not n_clicks:
+        raise PreventUpdate
+
+    def _err(msg):
+        return False, True, html.Span(msg, style={"color": "#dc2626", "fontWeight": "600"})
+
+    state = get_session_state(session_id)
+
+    if state.get("env") is None:
+        return _err("먼저 환경 데이터를 생성해주세요.")
+    if not selected_algos:
+        return _err("비교할 알고리즘을 하나 이상 선택해주세요.")
+    if state.get("algo_compare_progress", {}).get("running"):
+        return False, False, html.Span("이미 비교 실행 중입니다.", style={"color": "#b45309"})
+
+    prop = prop_params_base(
+        path_loss_exponent=safe_float(ui_path_loss_exp, 3.5),
+        bandwidth_mhz=safe_float(ui_bandwidth_mhz, 10.0),
+        sinr_threshold_db=safe_float(ui_sinr_threshold, 3.0),
+    )
+
+    state["algo_compare_config"] = {
+        "selected_algos": selected_algos,
+        "k": safe_int(n_stations, 5),
+        "prop": prop,
+        "spec_mode": spec_mode,
+        "capacity_default": capacity_default,
+        "station_specs": station_specs,
+        "ui_tx_power": ui_tx_power,
+        "ui_hetnet": ui_hetnet,
+        "ui_n_macro": ui_n_macro,
+        "ui_n_small": ui_n_small,
+        "ui_macro_power": ui_macro_power,
+        "ui_small_power": ui_small_power,
+        "score_mode": score_mode or "traffic",
+        "spectral_efficiency_mode": spectral_eff_mode or "shannon",
+        "time_profile": time_profile or "flat",
+        "time_hour": int(time_hour or 12),
+        "weight_scale": 1.0,
+    }
+    state["algo_compare_progress"] = {
+        "running": True, "done": False, "error": None,
+        "current": 0, "total": len(selected_algos), "current_algo": "",
+    }
+
+    threading.Thread(target=_run_algo_compare_thread, args=(session_id,), daemon=True).start()
+
+    return True, False, html.Span(
+        f"비교 시작: {len(selected_algos)}개 알고리즘",
+        style={"color": "#2563eb"},
+    )
+
+
+def _run_algo_compare_thread(session_id: str) -> None:
+    import time as _time
+    try:
+        state = get_session_state(session_id)
+        cfg = state.get("algo_compare_config")
+        env = state.get("env")
+        if cfg is None or env is None:
+            state["algo_compare_progress"] = {
+                "running": False, "done": False,
+                "error": "설정 또는 환경이 없습니다.",
+            }
+            return
+
+        selected_algos = cfg["selected_algos"]
+        k = cfg["k"]
+        prop = cfg["prop"]
+        score_mode = cfg.get("score_mode", "traffic")
+        spectral_efficiency_mode = cfg.get("spectral_efficiency_mode", "shannon")
+        weight_scale = float(cfg.get("weight_scale", 1.0))
+
+        env.time_profile = cfg.get("time_profile", "flat")
+        env.time_hour = max(0, min(23, int(cfg.get("time_hour", 12))))
+
+        hetnet_enabled = normalize_triggered_bool(cfg["ui_hetnet"])
+
+        def _build_problem(k_val):
+            cap = capacity_for_k(k_val, cfg["spec_mode"], cfg["station_specs"],
+                                 safe_float(cfg["capacity_default"], 2000.0))
+            tx = tx_power_for_k(
+                k_val,
+                hetnet_enabled=hetnet_enabled,
+                ui_tx_power=safe_float(cfg["ui_tx_power"], 43.0),
+                n_macro=safe_int(cfg["ui_n_macro"], 0),
+                n_small=safe_int(cfg["ui_n_small"], 0),
+                macro_power=safe_float(cfg["ui_macro_power"], 43.0),
+                small_power=safe_float(cfg["ui_small_power"], 30.0),
+                spec_mode=cfg["spec_mode"],
+                spec_rows=cfg["station_specs"],
+            )
+            r = radius_from_tx(tx, prop)
+            prob = ProblemInput.from_env(
+                env, radius_m=r, capacity=cap,
+                station_candidate_points=env.station_candidate_points,
+                path_loss_exponent=prop["path_loss_exponent"],
+                path_loss_ref_db=prop["path_loss_ref_db"],
+                tx_power_dbm=tx,
+                bandwidth_mhz=prop["bandwidth_mhz"],
+                sinr_threshold_db=prop["sinr_threshold_db"],
+                noise_floor_dbm=prop["noise_floor_dbm"],
+                score_mode=score_mode,
+                spectral_efficiency_mode=spectral_efficiency_mode,
+                weight_scale=weight_scale,
+            )
+            return prob, cap, tx
+
+        problem, cap_k, tx_k = _build_problem(k)
+
+        comparison_results = []
+        for i, algo_name in enumerate(selected_algos):
+            state["algo_compare_progress"]["current"] = i
+            state["algo_compare_progress"]["current_algo"] = algo_name
+
+            optimizer = get_optimizer(algo_name)
+            hyperparams = {p.name: p.default for p in optimizer.hyperparams}
+
+            t0 = _time.time()
+            result = optimizer.optimize(problem, n_stations=k, **hyperparams)
+            elapsed = _time.time() - t0
+
+            metrics = dict(result.metrics)
+            total_t = float(metrics.get("total_traffic", 1) or 1)
+            total_a = int(metrics.get("total_area", 1) or 1)
+            stations_geo = convert_to_geo(result.stations, problem)
+            stations_df = pd.DataFrame(stations_geo, columns=["lat", "lon"])
+
+            comparison_results.append({
+                "algo": algo_name,
+                "score": float(result.score),
+                "covered_traffic": float(metrics.get("covered_traffic", 0)),
+                "coverage_pct": float(metrics.get("covered_traffic", 0)) / total_t * 100,
+                "area_pct": int(metrics.get("covered_area", 0)) / total_a * 100,
+                "mean_sinr_db": metrics.get("mean_sinr_db"),
+                "total_throughput_mbps": float(metrics.get("total_throughput_mbps", 0)),
+                "elapsed_sec": elapsed,
+                "opt_results": {
+                    "algo": algo_name,
+                    "score": float(result.score),
+                    "stations_geo": stations_df.to_dict("records"),
+                    "history": result.history,
+                    "prop_params": {**prop, "tx_power_dbm": tx_k.tolist()},
+                    "capacity": cap_k.tolist() if hasattr(cap_k, "tolist") else list(cap_k),
+                },
+                "opt_stats": metrics,
+            })
+
+        state["algo_compare_results"] = comparison_results
+        state["algo_compare_progress"] = {
+            "running": False, "done": True, "error": None,
+            "current": len(selected_algos), "total": len(selected_algos),
+            "current_algo": "",
+        }
+    except Exception:
+        import traceback
+        tb = traceback.format_exc()
+        log.error("algo_compare thread error: %s", tb)
+        try:
+            state["algo_compare_progress"] = {"running": False, "done": False, "error": tb}
+        except Exception:
+            pass
+
+
+@app.callback(
+    Output("algo-compare-status", "children", allow_duplicate=True),
+    Output("algo-compare-meta", "data"),
+    Output("algo-compare-run-btn", "disabled", allow_duplicate=True),
+    Output("algo-compare-poll-interval", "disabled", allow_duplicate=True),
+    Input("algo-compare-poll-interval", "n_intervals"),
+    State("session-id", "data"),
+    prevent_initial_call=True,
+)
+def poll_algo_compare_progress(n_intervals, session_id):
+    state = get_session_state(session_id)
+    progress = state.get("algo_compare_progress")
+
+    if not progress:
+        raise PreventUpdate
+
+    if progress.get("error"):
+        msg = html.Span(f"오류: {str(progress['error'])[:120]}",
+                        style={"color": "#dc2626", "fontSize": "11px"})
+        return msg, no_update, False, True
+
+    if progress.get("done"):
+        cur = progress.get("current", 0)
+        tot = progress.get("total", 0)
+        msg = html.Span(f"완료: {cur}/{tot}개 알고리즘",
+                        style={"color": "#059669", "fontWeight": "600"})
+        return msg, version_token(), False, True
+
+    cur = progress.get("current", 0)
+    tot = progress.get("total", 1)
+    algo_name = progress.get("current_algo", "")
+    pct = int(cur / max(tot, 1) * 100)
+    msg = html.Div([
+        html.Span(f"{cur}/{tot} 완료 ({pct}%) — {algo_name}",
+                  style={"fontSize": "12px", "color": "#2563eb"}),
+        html.Div(style={
+            "height": "4px", "background": "#e5e7eb", "borderRadius": "2px",
+            "marginTop": "4px",
+        }, children=[
+            html.Div(style={
+                "height": "100%", "width": f"{pct}%",
+                "background": "#2563eb", "borderRadius": "2px",
+                "transition": "width 0.3s ease",
+            })
+        ]),
+    ])
+    return msg, no_update, no_update, no_update
+
+
+@app.callback(
+    Output("algo-compare-results", "children"),
+    Input("algo-compare-meta", "data"),
+    State("session-id", "data"),
+)
+def render_algo_compare_results(compare_meta, session_id):
+    if not compare_meta:
+        return []
+
+    state = get_session_state(session_id)
+    results = state.get("algo_compare_results")
+    if not results:
+        return []
+
+    algo_names = [r["algo"] for r in results]
+    scores = [r["score"] for r in results]
+    throughputs = [r["total_throughput_mbps"] for r in results]
+    best_idx = int(scores.index(max(scores)))
+
+    # 가로 막대 차트: score 기준 정렬, throughput 색상
+    sort_order = sorted(range(len(scores)), key=lambda i: scores[i])
+    sorted_names = [algo_names[i] for i in sort_order]
+    sorted_scores = [scores[i] for i in sort_order]
+    sorted_tp = [throughputs[i] for i in sort_order]
+    bar_colors = [
+        "#dc2626" if algo_names[i] == algo_names[best_idx] else "#2563eb"
+        for i in sort_order
+    ]
+
+    fig = go.Figure(go.Bar(
+        x=sorted_scores,
+        y=sorted_names,
+        orientation="h",
+        marker={"color": bar_colors},
+        text=[f"{s:.1f}" for s in sorted_scores],
+        textposition="outside",
+        customdata=sorted_tp,
+        hovertemplate="%{y}<br>Score: %{x:.2f}<br>처리량: %{customdata:.1f} Mbps<extra></extra>",
+    ))
+    fig.update_layout(
+        margin={"l": 10, "r": 50, "t": 10, "b": 30},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis={"title": "Score", "gridcolor": "#e5e7eb"},
+        yaxis={"gridcolor": "#e5e7eb"},
+        showlegend=False,
+        height=max(160, len(results) * 40 + 60),
+    )
+
+    # 비교 테이블
+    table_rows = []
+    for r in results:
+        sinr_str = f"{r['mean_sinr_db']:.1f}" if r["mean_sinr_db"] is not None else "-"
+        table_rows.append({
+            "algo": r["algo"],
+            "score": round(r["score"], 2),
+            "coverage_pct": round(r["coverage_pct"], 1),
+            "throughput_mbps": round(r["total_throughput_mbps"], 1),
+            "area_pct": round(r["area_pct"], 1),
+            "sinr_db": sinr_str,
+            "elapsed_sec": round(r["elapsed_sec"], 2),
+        })
+    table_best_idx = int(max(range(len(table_rows)), key=lambda i: table_rows[i]["score"]))
+
+    table = dash_table.DataTable(
+        data=table_rows,
+        columns=[
+            {"name": "알고리즘", "id": "algo"},
+            {"name": "Score", "id": "score"},
+            {"name": "커버리지(%)", "id": "coverage_pct"},
+            {"name": "처리량(Mbps)", "id": "throughput_mbps"},
+            {"name": "면적커버(%)", "id": "area_pct"},
+            {"name": "SINR(dB)", "id": "sinr_db"},
+            {"name": "시간(s)", "id": "elapsed_sec"},
+        ],
+        page_size=10,
+        style_table={"overflowX": "auto"},
+        style_cell={"fontSize": "11px", "padding": "3px 6px"},
+        style_header={"fontSize": "11px", "fontWeight": "700"},
+        style_data_conditional=[
+            {
+                "if": {"row_index": table_best_idx},
+                "backgroundColor": "#fef2f2",
+                "fontWeight": "700",
+                "color": "#dc2626",
+            }
+        ],
+    )
+
+    apply_btn = html.Button(
+        "최적 알고리즘 결과 적용",
+        id="algo-compare-apply-btn",
+        n_clicks=0,
+        style={
+            "marginTop": "8px", "width": "100%", "padding": "6px",
+            "fontSize": "12px", "background": "#059669", "color": "#fff",
+            "border": "0", "borderRadius": "6px", "cursor": "pointer",
+            "fontWeight": "600",
+        },
+    )
+
+    return [
+        dcc.Graph(figure=fig, config={"displayModeBar": False},
+                  style={"marginTop": "8px"}),
+        html.Div(table, style={"marginTop": "6px"}),
+        apply_btn,
+    ]
+
+
+@app.callback(
+    Output("opt-meta", "data", allow_duplicate=True),
+    Output("algo-compare-status", "children", allow_duplicate=True),
+    Input("algo-compare-apply-btn", "n_clicks"),
+    State("session-id", "data"),
+    prevent_initial_call=True,
+)
+def apply_algo_compare_best(n_clicks, session_id):
+    if not n_clicks:
+        raise PreventUpdate
+
+    state = get_session_state(session_id)
+    results = state.get("algo_compare_results")
+    if not results:
+        return no_update, html.Span("비교 결과가 없습니다.",
+                                    style={"color": "#dc2626", "fontSize": "12px"})
+
+    best = max(results, key=lambda r: r["score"])
+    state["opt_results"] = best["opt_results"]
+    state["opt_stats"] = best["opt_stats"]
+
+    msg = html.Span(
+        f"적용 완료: {best['algo']}, score={best['score']:.2f}",
         style={"color": "#059669", "fontWeight": "600", "fontSize": "12px"},
     )
     return version_token(), msg
