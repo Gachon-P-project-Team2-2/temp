@@ -1819,16 +1819,39 @@ def serve_layout():
                                                 label="Sweep",
                                                 value="tab-sweep",
                                                 children=[
+                                                    # ── 모드 선택 ──────────────────────────
+                                                    dcc.RadioItems(
+                                                        id="sweep-mode",
+                                                        options=[
+                                                            {"label": "모드 1: 하이퍼파라미터별 성능",
+                                                             "value": "mode1"},
+                                                            {"label": "모드 2: 알고리즘별 성능",
+                                                             "value": "mode2"},
+                                                        ],
+                                                        value="mode1",
+                                                        labelStyle={"display": "block",
+                                                                    "fontSize": "12px",
+                                                                    "marginBottom": "4px"},
+                                                        style={"marginBottom": "14px",
+                                                               "padding": "8px",
+                                                               "background": "#f3f4f6",
+                                                               "borderRadius": "6px"},
+                                                    ),
+
+                                                    # ── 모드 1 패널 ────────────────────────
                                                     html.Div(
                                                         [
-                                                            html.H3("Sweep 설정", style={"margin": "0 0 8px",
-                                                                    "fontSize": "14px", "fontWeight": "700",
-                                                                    "borderBottom": "1px solid #e5e7eb",
-                                                                    "paddingBottom": "4px"}),
+                                                            html.H3("Sweep 설정",
+                                                                    style={"margin": "0 0 8px",
+                                                                           "fontSize": "14px",
+                                                                           "fontWeight": "700",
+                                                                           "borderBottom": "1px solid #e5e7eb",
+                                                                           "paddingBottom": "4px"}),
                                                             html.Div(
                                                                 id="sweep-algo-display",
                                                                 style={"fontSize": "12px", "color": "#6b7280",
-                                                                       "marginTop": "8px", "marginBottom": "8px"},
+                                                                       "marginTop": "8px",
+                                                                       "marginBottom": "8px"},
                                                             ),
                                                             html.Div(id="sweep-params-container"),
                                                             html.Button(
@@ -1837,93 +1860,110 @@ def serve_layout():
                                                                 n_clicks=0,
                                                                 className="primary-button",
                                                             ),
-                                                            html.Div(id="sweep-status",
-                                                                     style={"fontSize": "12px", "marginTop": "8px"}),
-                                                        ],
-                                                        style={"marginBottom": "16px"},
-                                                    ),
-
-                                                    html.Div(
-                                                        [
-                                                            html.H3("Sweep 결과", style={"margin": "0 0 8px",
-                                                                    "fontSize": "14px", "fontWeight": "700",
-                                                                    "borderBottom": "1px solid #e5e7eb",
-                                                                    "paddingBottom": "4px"}),
                                                             html.Div(
-                                                                [
-                                                                    dcc.Graph(
-                                                                        id="sweep-result-chart",
-                                                                        style={"height": "300px", "width": "100%", "marginTop": "8px"},
-                                                                        config={"displayModeBar": True,
-                                                                                "modeBarButtonsToRemove": [
-                                                                                    "lasso2d", "select2d",
-                                                                                ]},
-                                                                        responsive=True,
-                                                                    ),
-                                                                    html.Div(id="sweep-result-table",
-                                                                             style={"marginTop": "6px",
-                                                                                    "maxHeight": "260px",
-                                                                                    "overflowY": "auto"}),
-                                                                    html.Button(
-                                                                        "최적 결과 적용",
-                                                                        id="sweep-apply-btn",
-                                                                        n_clicks=0,
-                                                                        style={
-                                                                            "marginTop": "8px",
-                                                                            "width": "100%",
-                                                                            "padding": "6px",
-                                                                            "fontSize": "12px",
-                                                                            "background": "#059669",
-                                                                            "color": "#fff",
-                                                                            "border": "0",
-                                                                            "borderRadius": "6px",
-                                                                            "cursor": "pointer",
-                                                                            "fontWeight": "600",
-                                                                        },
-                                                                    ),
-                                                                ]
+                                                                id="sweep-status",
+                                                                style={"fontSize": "12px",
+                                                                       "marginTop": "8px"},
+                                                            ),
+
+                                                            html.H3("Sweep 결과",
+                                                                    style={"margin": "16px 0 8px",
+                                                                           "fontSize": "14px",
+                                                                           "fontWeight": "700",
+                                                                           "borderBottom": "1px solid #e5e7eb",
+                                                                           "paddingBottom": "4px"}),
+                                                            dcc.Graph(
+                                                                id="sweep-result-chart",
+                                                                style={"height": "300px",
+                                                                       "width": "100%",
+                                                                       "marginTop": "8px"},
+                                                                config={"displayModeBar": True,
+                                                                        "modeBarButtonsToRemove": [
+                                                                            "lasso2d", "select2d",
+                                                                        ]},
+                                                                responsive=True,
+                                                            ),
+                                                            html.Div(
+                                                                id="sweep-result-table",
+                                                                style={"marginTop": "6px",
+                                                                       "maxHeight": "260px",
+                                                                       "overflowY": "auto"},
+                                                            ),
+                                                            html.Button(
+                                                                "최적 결과 적용",
+                                                                id="sweep-apply-btn",
+                                                                n_clicks=0,
+                                                                style={
+                                                                    "marginTop": "8px",
+                                                                    "width": "100%",
+                                                                    "padding": "6px",
+                                                                    "fontSize": "12px",
+                                                                    "background": "#059669",
+                                                                    "color": "#fff",
+                                                                    "border": "0",
+                                                                    "borderRadius": "6px",
+                                                                    "cursor": "pointer",
+                                                                    "fontWeight": "600",
+                                                                },
                                                             ),
                                                         ],
-                                                        style={"marginBottom": "16px"},
+                                                        id="sweep-mode1-panel",
                                                     ),
 
-                                                    # ── 알고리즘 비교 ──────────────────────
+                                                    # ── 모드 2 패널 ────────────────────────
                                                     html.Div(
                                                         [
-                                                            html.H3("알고리즘 비교", style={"margin": "0 0 8px",
-                                                                    "fontSize": "14px", "fontWeight": "700",
-                                                                    "borderBottom": "1px solid #e5e7eb",
-                                                                    "paddingBottom": "4px"}),
-                                                            html.Div([
-                                                                html.Label("비교할 알고리즘",
-                                                                           style={"fontSize": "12px",
-                                                                                  "fontWeight": "600",
-                                                                                  "marginBottom": "6px",
-                                                                                  "display": "block"}),
-                                                                dcc.Checklist(
-                                                                    id="algo-compare-select",
-                                                                    options=[{"label": cls.name, "value": cls.name}
-                                                                             for cls in REGISTRY],
-                                                                    value=[cls.name for cls in REGISTRY],
-                                                                    inputStyle={"marginRight": "5px"},
-                                                                    labelStyle={"display": "block",
-                                                                                "fontSize": "12px",
-                                                                                "marginBottom": "3px"},
-                                                                ),
-                                                                html.Button(
-                                                                    "알고리즘 비교 실행",
-                                                                    id="algo-compare-run-btn",
-                                                                    n_clicks=0,
-                                                                    className="primary-button",
-                                                                    style={"marginTop": "8px", "width": "100%"},
-                                                                ),
-                                                                html.Div(id="algo-compare-status",
-                                                                         style={"marginTop": "6px",
-                                                                                "fontSize": "12px"}),
-                                                                html.Div(id="algo-compare-results"),
-                                                            ]),
+                                                            html.H3("알고리즘 선택",
+                                                                    style={"margin": "0 0 8px",
+                                                                           "fontSize": "14px",
+                                                                           "fontWeight": "700",
+                                                                           "borderBottom": "1px solid #e5e7eb",
+                                                                           "paddingBottom": "4px"}),
+                                                            dcc.Checklist(
+                                                                id="algo-compare-select",
+                                                                options=[{"label": cls.name,
+                                                                          "value": cls.name}
+                                                                         for cls in REGISTRY],
+                                                                value=[cls.name for cls in REGISTRY],
+                                                                inputStyle={"marginRight": "5px"},
+                                                                labelStyle={"display": "inline-block",
+                                                                            "fontSize": "12px",
+                                                                            "marginRight": "12px",
+                                                                            "marginBottom": "4px"},
+                                                            ),
+
+                                                            html.H3("알고리즘별 하이퍼파라미터",
+                                                                    style={"margin": "14px 0 8px",
+                                                                           "fontSize": "14px",
+                                                                           "fontWeight": "700",
+                                                                           "borderBottom": "1px solid #e5e7eb",
+                                                                           "paddingBottom": "4px"}),
+                                                            html.Div(id="mode2-hp-panel"),
+
+                                                            html.Button(
+                                                                "알고리즘 비교 실행",
+                                                                id="algo-compare-run-btn",
+                                                                n_clicks=0,
+                                                                className="primary-button",
+                                                                style={"marginTop": "10px",
+                                                                       "width": "100%"},
+                                                            ),
+                                                            html.Div(
+                                                                id="algo-compare-status",
+                                                                style={"marginTop": "6px",
+                                                                       "fontSize": "12px"},
+                                                            ),
+
+                                                            html.H3("비교 결과",
+                                                                    style={"margin": "16px 0 8px",
+                                                                           "fontSize": "14px",
+                                                                           "fontWeight": "700",
+                                                                           "borderBottom": "1px solid #e5e7eb",
+                                                                           "paddingBottom": "4px"}),
+                                                            html.Div(id="algo-compare-results"),
                                                         ],
-                                                        style={"marginBottom": "16px"},
+                                                        id="sweep-mode2-panel",
+                                                        style={"display": "none"},
                                                     ),
                                                 ],
                                                 style={"padding": "10px 4px 0"},
@@ -4200,6 +4240,86 @@ def apply_sweep_best(n_clicks, session_id):
     return version_token(), msg
 
 
+# ── Sweep 모드 전환 ───────────────────────────────────────────────────────
+
+@app.callback(
+    Output("sweep-mode1-panel", "style"),
+    Output("sweep-mode2-panel", "style"),
+    Input("sweep-mode", "value"),
+)
+def toggle_sweep_mode_panels(mode):
+    if mode == "mode1":
+        return {"display": "block"}, {"display": "none"}
+    return {"display": "none"}, {"display": "block"}
+
+
+@app.callback(
+    Output("mode2-hp-panel", "children"),
+    Input("algo-compare-select", "value"),
+)
+def render_mode2_hp_controls(selected_algos):
+    if not selected_algos:
+        return html.Div("알고리즘을 하나 이상 선택하세요.",
+                        style={"fontSize": "12px", "color": "#9ca3af"})
+
+    _HP_KIND_LABEL = {"int": "정수", "float": "실수", "bool": "불리언"}
+    panels = []
+    for algo_name in selected_algos:
+        optimizer = get_optimizer(algo_name)
+        if not optimizer.hyperparams:
+            panels.append(html.Div([
+                html.Div(algo_name,
+                         style={"fontWeight": "600", "fontSize": "12px",
+                                "marginBottom": "4px", "color": "#374151"}),
+                html.Div("하이퍼파라미터 없음",
+                         style={"fontSize": "11px", "color": "#9ca3af",
+                                "marginBottom": "10px"}),
+            ]))
+            continue
+
+        rows = []
+        for hp in optimizer.hyperparams:
+            if hp.kind == "bool":
+                ctrl = dcc.Checklist(
+                    id={"type": "mode2-hp", "algo": algo_name, "param": hp.name},
+                    options=[{"label": "", "value": "on"}],
+                    value=["on"] if hp.default else [],
+                    style={"display": "inline-block"},
+                )
+            else:
+                ctrl = dcc.Input(
+                    id={"type": "mode2-hp", "algo": algo_name, "param": hp.name},
+                    type="number",
+                    value=hp.default,
+                    step=1 if hp.kind == "int" else "any",
+                    style={"width": "90px", "fontSize": "12px", "padding": "2px 4px"},
+                )
+            rows.append(html.Div(
+                [
+                    html.Span(hp.name,
+                              style={"fontSize": "11px", "color": "#6b7280",
+                                     "minWidth": "110px", "display": "inline-block"}),
+                    ctrl,
+                ],
+                style={"display": "flex", "alignItems": "center",
+                       "gap": "6px", "marginBottom": "4px"},
+            ))
+
+        panels.append(html.Div(
+            [
+                html.Div(algo_name,
+                         style={"fontWeight": "600", "fontSize": "12px",
+                                "marginBottom": "6px", "color": "#1d4ed8"}),
+                *rows,
+            ],
+            style={"marginBottom": "12px", "padding": "8px",
+                   "background": "#f9fafb", "borderRadius": "6px",
+                   "border": "1px solid #e5e7eb"},
+        ))
+
+    return panels
+
+
 # ── 알고리즘 비교 ─────────────────────────────────────────────────────────
 
 @app.callback(
@@ -4209,6 +4329,8 @@ def apply_sweep_best(n_clicks, session_id):
     Input("algo-compare-run-btn", "n_clicks"),
     State("session-id", "data"),
     State("algo-compare-select", "value"),
+    State({"type": "mode2-hp", "algo": ALL, "param": ALL}, "value"),
+    State({"type": "mode2-hp", "algo": ALL, "param": ALL}, "id"),
     State("n-stations", "value"),
     State("ui-tx-power", "value"),
     State("ui-path-loss-exp", "value"),
@@ -4225,6 +4347,7 @@ def apply_sweep_best(n_clicks, session_id):
 )
 def start_algo_compare_job(
     n_clicks, session_id, selected_algos,
+    hp_values, hp_ids,
     n_stations,
     ui_tx_power, ui_path_loss_exp, ui_bandwidth_mhz, ui_sinr_threshold,
     spec_mode, capacity_default, station_specs,
@@ -4245,6 +4368,31 @@ def start_algo_compare_job(
     if state.get("algo_compare_progress", {}).get("running"):
         return False, False, html.Span("이미 비교 실행 중입니다.", style={"color": "#b45309"})
 
+    # 알고리즘별 HP 수집: {algo_name: {param_name: value}}
+    algo_hyperparams: dict[str, dict] = {}
+    for val, id_obj in zip(hp_values, hp_ids):
+        algo = id_obj["algo"]
+        param = id_obj["param"]
+        if algo not in selected_algos:
+            continue
+        optimizer = get_optimizer(algo)
+        hp_def = next((h for h in optimizer.hyperparams if h.name == param), None)
+        if hp_def is None:
+            continue
+        if hp_def.kind == "bool":
+            parsed = "on" in (val or [])
+        elif hp_def.kind == "int":
+            parsed = safe_int(val, int(hp_def.default))
+        else:
+            parsed = safe_float(val, float(hp_def.default))
+        algo_hyperparams.setdefault(algo, {})[param] = parsed
+
+    # 누락된 알고리즘은 기본값으로 채움
+    for algo in selected_algos:
+        if algo not in algo_hyperparams:
+            optimizer = get_optimizer(algo)
+            algo_hyperparams[algo] = {h.name: h.default for h in optimizer.hyperparams}
+
     prop = prop_params_base(
         path_loss_exponent=safe_float(ui_path_loss_exp, 3.5),
         bandwidth_mhz=safe_float(ui_bandwidth_mhz, 10.0),
@@ -4253,6 +4401,7 @@ def start_algo_compare_job(
 
     state["algo_compare_config"] = {
         "selected_algos": selected_algos,
+        "algo_hyperparams": algo_hyperparams,
         "k": safe_int(n_stations, 5),
         "prop": prop,
         "spec_mode": spec_mode,
@@ -4328,13 +4477,17 @@ def _run_algo_compare_thread(session_id: str) -> None:
 
         problem, cap_k, tx_k = _build_problem(k)
 
+        algo_hyperparams = cfg.get("algo_hyperparams", {})
+
         comparison_results = []
         for i, algo_name in enumerate(selected_algos):
             state["algo_compare_progress"]["current"] = i
             state["algo_compare_progress"]["current_algo"] = algo_name
 
             optimizer = get_optimizer(algo_name)
-            hyperparams = {p.name: p.default for p in optimizer.hyperparams}
+            hyperparams = algo_hyperparams.get(
+                algo_name, {p.name: p.default for p in optimizer.hyperparams}
+            )
 
             t0 = _time.time()
             result = optimizer.optimize(problem, n_stations=k, **hyperparams)
