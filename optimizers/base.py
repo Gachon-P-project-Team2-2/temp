@@ -363,6 +363,9 @@ def compute_metrics(stations: np.ndarray, problem: ProblemInput) -> dict:
         np.add.at(station_loads, serving_idx[valid_indices], problem.weights[valid_indices])
     effective_loads = np.minimum(station_loads, capacities)
 
+    # 커버된 트래픽 = SINR 임계값 이상인 셀의 순수 수요 합계 (capacity cap 없음)
+    covered_traffic = float(np.sum(problem.weights[valid_indices])) if len(valid_indices) > 0 else 0.0
+
     # 처리량 계산: 기지국당 평균 스펙트럼 효율 × 대역폭 (대역폭은 셀 수와 무관하게 공유)
     eta = spectral_efficiency(best_sinr_db, se_mode)  # (N,)
     station_tp = np.zeros(K)
@@ -381,7 +384,7 @@ def compute_metrics(stations: np.ndarray, problem: ProblemInput) -> dict:
 
     return {
         "total_traffic": float(np.sum(problem.weights)),
-        "covered_traffic": float(np.sum(effective_loads)),
+        "covered_traffic": covered_traffic,
         "total_area": int(len(problem.weights)),
         "covered_area": int(len(valid_indices)),
         "station_loads": station_loads,

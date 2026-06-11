@@ -1093,9 +1093,9 @@ def sidebar_layout():
                                 min=1,
                                 max=200,
                                 step=1,
-                                value=25,
-                                marks={1: "1", 25: "25", 50: "50",
-                                       100: "100", 200: "200"},
+                                value=150,
+                                marks={1: "1", 50: "50", 100: "100",
+                                       150: "150", 200: "200"},
                                 tooltip={"placement": "bottom"},
                             ),
                             html.Div(
@@ -2475,7 +2475,7 @@ def create_environment(
 
         if is_dynamic:
             env.generate_dynamic_traffic_pattern_density(
-                area_demand_mbps_km2=safe_float(area_demand_mbps_km2, 25.0),
+                area_demand_mbps_km2=safe_float(area_demand_mbps_km2, 150.0),
                 pattern=traffic_pattern,
                 time_steps=safe_int(dynamic_time_steps, 12),
                 variation=safe_float(dynamic_variation, 0.25),
@@ -2485,7 +2485,7 @@ def create_environment(
 
         else:
             env.generate_traffic_pattern_density(
-                area_demand_mbps_km2=safe_float(area_demand_mbps_km2, 25.0),
+                area_demand_mbps_km2=safe_float(area_demand_mbps_km2, 150.0),
                 pattern=traffic_pattern,
                 params=pattern_params,
             )
