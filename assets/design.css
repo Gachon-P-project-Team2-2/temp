@@ -1,0 +1,403 @@
+/* ============================================================
+   Design System — Kraken-inspired (see DESIGN.md)
+   Primary: Kraken Purple #7132f5  |  Canvas: #ffffff
+   Body font: IBM Plex Sans  |  Mono font: JetBrains Mono
+   ============================================================ */
+
+/* ── Google Fonts ─────────────────────────────────────────── */
+@import url("https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@500&display=swap");
+
+/* ── Design Tokens ────────────────────────────────────────── */
+:root {
+  /* Colors — Brand (Kraken Purple scale) */
+  --color-primary:          #7132f5;
+  --color-primary-active:   #5741d8;
+  --color-primary-deep:     #5b1ecf;
+  --color-primary-subtle:   rgba(133, 91, 251, 0.16);
+  --color-primary-disabled: rgba(133, 91, 251, 0.40);
+
+  /* Colors — Surface */
+  --color-canvas:           #ffffff;
+  --color-surface-soft:     #f7f7f8;
+  --color-surface-strong:   #eef0f3;
+  --color-surface-dark:     #101114;
+  --color-surface-elevated: #1a1b1f;
+
+  /* Colors — Hairline */
+  --color-hairline:         #dedee5;
+  --color-hairline-soft:    #eef0f3;
+
+  /* Colors — Text */
+  --color-ink:              #101114;
+  --color-body:             #686b82;
+  --color-muted:            #717490;   /* WCAG AA 4.56:1 on white — text use */
+  --color-muted-soft:       #9497a9;   /* decorative/non-text only */
+  --color-on-primary:       #ffffff;
+
+  /* Colors — Semantic */
+  --color-up:               #149e61;
+  --color-up-subtle:        rgba(20, 158, 97, 0.16);
+  --color-up-text:          #026b3f;
+  --color-down:             #cf202f;
+
+  /* Typography */
+  --font-sans:  "IBM Plex Sans KR", "IBM Plex Sans", "Helvetica Neue", Helvetica, Arial, sans-serif;
+  --font-mono:  "JetBrains Mono", "Courier New", monospace;
+
+  /* Radius (DESIGN.md scale: 3, 6, 8, 10, 12, 16px) */
+  --radius-xs:   3px;
+  --radius-sm:   8px;
+  --radius-md:   12px;
+  --radius-lg:   16px;
+  --radius-xl:   24px;
+  --radius-pill: 100px;   /* reserved for badges/tags only */
+
+  /* Spacing */
+  --sp-xxs:  4px;
+  --sp-xs:   8px;
+  --sp-sm:   12px;
+  --sp-base: 16px;
+  --sp-md:   20px;
+  --sp-lg:   24px;
+  --sp-xl:   32px;
+  --sp-xxl:  48px;
+
+  /* Shadow (Kraken whisper-level) */
+  --shadow-card:  rgba(0, 0, 0, 0.03) 0px 4px 24px;
+  --shadow-hover: rgba(16, 24, 40, 0.04) 0px 1px 4px;
+}
+
+/* ── Reset / Base ─────────────────────────────────────────── */
+*, *::before, *::after {
+  box-sizing: border-box;
+}
+
+body {
+  font-family: var(--font-sans) !important;
+  font-size:   16px;
+  font-weight: 400;
+  line-height: 1.38;
+  color:       var(--color-ink);
+  background:  var(--color-canvas);
+  margin: 0;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family:    var(--font-sans);
+  font-weight:    600;
+  color:          var(--color-ink);
+  letter-spacing: -0.2px;
+  margin: 0 0 var(--sp-sm);
+}
+
+label {
+  font-size:   13px;
+  font-weight: 500;
+  color:       var(--color-body);
+  display:     block;
+  margin:      var(--sp-sm) 0 var(--sp-xxs);
+}
+
+/* ── Primary Button ───────────────────────────────────────── */
+.primary-button {
+  display:       inline-flex;
+  align-items:   center;
+  justify-content: center;
+  gap:           var(--sp-xs);
+  height:        44px;
+  padding:       0 var(--sp-md);
+  font-family:   var(--font-sans);
+  font-size:     14px;
+  font-weight:   600;
+  color:         var(--color-on-primary) !important;
+  background:    var(--color-primary) !important;
+  border:        none;
+  border-radius: var(--radius-md) !important;   /* !important: beats Dash inline sheet */
+  cursor:        pointer;
+  width:         100%;
+  margin-top:    var(--sp-sm);
+  transition:    background 0.12s ease, box-shadow 0.12s ease;
+  letter-spacing: 0;
+}
+
+.primary-button:hover:not(:disabled) {
+  background:  var(--color-primary-active) !important;
+  box-shadow:  var(--shadow-card);
+}
+
+.primary-button:disabled {
+  background: var(--color-primary-disabled) !important;
+  cursor:     not-allowed;
+}
+
+/* ── Secondary Button ────────────────────────────────────── */
+.secondary-button {
+  display:       inline-flex;
+  align-items:   center;
+  justify-content: center;
+  height:        36px;
+  padding:       0 var(--sp-sm);
+  font-family:   var(--font-sans);
+  font-size:     13px;
+  font-weight:   500;
+  color:         var(--color-ink);
+  background:    rgba(148, 151, 169, 0.08);
+  border:        1px solid var(--color-hairline);
+  border-radius: var(--radius-md);
+  cursor:        pointer;
+  transition:    background 0.12s ease, border-color 0.12s ease;
+}
+
+.secondary-button:hover {
+  background:   var(--color-surface-strong);
+  border-color: var(--color-muted-soft);
+}
+
+/* ── Sidebar Toggle Button ────────────────────────────────── */
+.sidebar-toggle-btn {
+  display:       flex;
+  align-items:   center;
+  justify-content: center;
+  width:         28px;
+  height:        28px;
+  padding:       0;
+  font-size:     13px;
+  font-weight:   600;
+  color:         var(--color-body);
+  background:    var(--color-surface-strong);
+  border:        1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  cursor:        pointer;
+  flex-shrink:   0;
+  align-self:    flex-start;
+  margin:        var(--sp-sm);
+  transition:    background 0.12s ease;
+}
+
+.sidebar-toggle-btn:hover {
+  background: var(--color-hairline);
+}
+
+/* ── Sidebar Body ─────────────────────────────────────────── */
+.sidebar-body {
+  padding: var(--sp-sm) var(--sp-base);
+}
+
+/* ── Resize Handle ────────────────────────────────────────── */
+.resize-handle-v {
+  width:      4px;
+  background: var(--color-surface-strong);
+  cursor:     col-resize;
+  flex-shrink: 0;
+  transition: background 0.12s ease;
+  z-index:    10;
+}
+
+.resize-handle-v:hover {
+  background: var(--color-primary);
+}
+
+/* ── Metric Card ──────────────────────────────────────────── */
+.metric-card {
+  background:    var(--color-canvas);
+  border:        1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  padding:       var(--sp-sm) var(--sp-base);
+  min-width:     130px;
+  transition:    box-shadow 0.15s ease;
+}
+
+.metric-card:hover {
+  box-shadow: var(--shadow-card);
+}
+
+.metric-card__title {
+  font-size:   11px;
+  font-weight: 500;
+  color:       var(--color-muted);
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  margin-bottom: var(--sp-xxs);
+}
+
+.metric-card__value {
+  font-family: var(--font-mono);
+  font-size:   20px;
+  font-weight: 500;
+  color:       var(--color-ink);
+  line-height: 1.3;
+}
+
+/* ── Section Header ───────────────────────────────────────── */
+.section-header {
+  font-size:    12px;
+  font-weight:  600;
+  color:        var(--color-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 2px solid var(--color-surface-strong);
+  padding-bottom: var(--sp-xxs);
+  margin: 0 0 var(--sp-sm);
+}
+
+/* ── Mode2 Accordion Item ─────────────────────────────────── */
+.algo-acc-header {
+  width:        100%;
+  text-align:   left;
+  background:   var(--color-surface-soft);
+  border:       1px solid var(--color-hairline);
+  border-radius: var(--radius-sm);
+  padding:      8px 12px;
+  cursor:       pointer;
+  font-size:    13px;
+  font-weight:  500;
+  color:        var(--color-ink);
+  margin-bottom: 3px;
+  display:      flex;
+  justify-content: space-between;
+  align-items:  center;
+  transition:   background 0.12s, border-color 0.12s;
+}
+
+.algo-acc-header:hover {
+  background:   var(--color-surface-strong);
+  border-color: var(--color-muted-soft);
+}
+
+.algo-acc-header--active {
+  background:   var(--color-primary-subtle);
+  border-color: rgba(133, 91, 251, 0.40);
+  color:        var(--color-primary);
+  font-weight:  600;
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+  margin-bottom: 0;
+}
+
+.algo-acc-body {
+  border:       1px solid rgba(133, 91, 251, 0.40);
+  border-top:   none;
+  border-bottom-left-radius: var(--radius-sm);
+  border-bottom-right-radius: var(--radius-sm);
+  background:   var(--color-canvas);
+  padding:      10px 12px;
+  margin-bottom: 3px;
+}
+
+/* ── Dropdown / Select override ───────────────────────────── */
+.Select-control {
+  border-radius: var(--radius-md) !important;
+  border-color:  var(--color-hairline) !important;
+  font-size:     13px;
+}
+
+.Select-control:hover {
+  border-color: var(--color-primary) !important;
+}
+
+/* ── Dash DataTable tweaks ────────────────────────────────── */
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner th {
+  background:  var(--color-surface-soft);
+  color:       var(--color-body);
+  font-size:   12px;
+  font-weight: 600;
+}
+
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner td {
+  font-size: 12px;
+  color:     var(--color-ink);
+}
+
+/* ── Dash Slider (Radix UI) accent ───────────────────────── */
+.dash-slider-range {
+  background-color: var(--color-primary) !important;
+}
+
+.dash-slider-thumb {
+  background-color: var(--color-primary) !important;
+  border-color:     var(--color-primary) !important;
+  box-shadow:       0 0 0 2px rgba(113, 50, 245, 0.15) !important;
+}
+
+.dash-slider-thumb:focus,
+.dash-slider-thumb:hover {
+  box-shadow: 0 0 0 4px rgba(113, 50, 245, 0.20) !important;
+}
+
+/* ── History / playback panel ─────────────────────────────── */
+.history-panel {
+  background:    var(--color-canvas);
+  border:        1px solid var(--color-hairline);
+  border-radius: var(--radius-lg);
+  padding:       var(--sp-sm) var(--sp-base);
+  margin-top:    var(--sp-base);
+}
+
+.history-panel__label {
+  font-size:   12px;
+  font-weight: 600;
+  color:       var(--color-body);
+  margin-bottom: var(--sp-xxs);
+}
+
+/* ── Dash Tabs ────────────────────────────────────────────── */
+.tab--selected {
+  border-top-color: var(--color-primary) !important;
+  color:            var(--color-primary) !important;
+}
+
+.tab {
+  font-size:   14px !important;
+  font-weight: 500 !important;
+}
+
+.tab-content {
+  padding-top: var(--sp-base);  /* 16px gap between tab bar and content */
+}
+
+/* ── Radio / Checkbox accent ──────────────────────────────── */
+input[type="radio"],
+input[type="checkbox"] {
+  accent-color: var(--color-primary);
+}
+
+/* ── Badge ────────────────────────────────────────────────── */
+.badge-success {
+  display:       inline-block;
+  padding:       2px 8px;
+  background:    var(--color-up-subtle);
+  color:         var(--color-up-text);
+  font-size:     12px;
+  font-weight:   600;
+  border-radius: var(--radius-xs);
+}
+
+.badge-neutral {
+  display:       inline-block;
+  padding:       2px 8px;
+  background:    rgba(104, 107, 130, 0.12);
+  color:         #484b5e;
+  font-size:     12px;
+  font-weight:   600;
+  border-radius: var(--radius-sm);
+}
+
+/* ── Sidebar collapse state ──────────────────────────────── */
+.sidebar-collapsed {
+  overflow: hidden !important;
+}
+
+.sidebar-collapsed .sidebar-body {
+  display: none;
+}
+
+/* ── Util ─────────────────────────────────────────────────── */
+.text-muted {
+  color:     var(--color-muted);
+  font-size: 12px;
+}
+
+.text-primary {
+  color: var(--color-primary);
+}
