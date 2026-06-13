@@ -120,6 +120,11 @@ def test_app_loads(page: Page):
     expect(page.locator("#traffic-pattern")).to_contain_text("random_clusters")
     expect(page.get_by_role("heading", name="알고리즘")).to_be_visible()
     expect(page.get_by_role("heading", name="전파 모델")).to_be_visible()
+    propagation_box = page.get_by_role("heading", name="전파 모델").bounding_box()
+    algorithm_box = page.get_by_role("heading", name="알고리즘").bounding_box()
+    assert propagation_box is not None
+    assert algorithm_box is not None
+    assert propagation_box["y"] < algorithm_box["y"]
     expect(page.get_by_role("button", name="영역 지정")).to_be_visible()
     expect(page.locator("#main-view-mode input[value='map']")).to_be_checked()
     expect(page.locator("#main-view-mode label").filter(has_text="2")).to_be_visible()
@@ -162,12 +167,42 @@ def test_traffic_pattern_selectbox_has_all_patterns(page: Page):
 
 
 def test_dynamic_traffic_type_dropdown_has_expected_options(page: Page):
-    """동적 트래픽 모드에서 동적 유형 dropdown이 노출되는지."""
+    """동적 트래픽 모드에서 동적 유형과 운영 정책 dropdown이 노출되는지."""
+    expect(page.get_by_role("heading", name="운영 최적화")).not_to_be_visible()
+
     page.get_by_text("동적 트래픽 모드").click()
     expect(page.get_by_text("동적 트래픽 유형")).to_be_visible()
     page.locator("#dynamic-traffic-type").click()
     for name in ("고정 위치 변동", "이동형 핫스팟", "위치 전환형"):
         expect(page.get_by_role("option", name=name, exact=True)).to_be_visible()
+
+    expect(page.get_by_role("heading", name="운영 최적화")).to_be_visible()
+    expect(page.locator("#optimize-btn")).to_have_js_property("nextElementSibling.id", "operation-optimization-section")
+    expect(page.locator("#optimize-btn")).to_have_css("margin-bottom", "10px")
+    expect(page.locator("#operation-optimization-section")).to_have_css("margin-top", "10px")
+    expect(page.locator("#operation-policy")).to_contain_text("always-on")
+    expect(page.get_by_text("부하 전력 계수 (W)")).to_be_visible()
+    expect(page.get_by_text("Active 전력 (W)")).not_to_be_visible()
+    expect(page.get_by_text("Sleep 전력 (W)")).not_to_be_visible()
+    expect(page.get_by_text("전환 비용")).to_be_visible()
+    expect(page.get_by_text("미커버 페널티")).to_be_visible()
+    expect(page.get_by_text("과부하 페널티")).to_be_visible()
+    expect(page.get_by_role("button", name="운영 최적화 실행")).to_be_disabled()
+    page.locator("#operation-policy").click()
+    for name in ("always-on", "threshold", "two-threshold", "greedy-off", "dqn"):
+        expect(page.get_by_role("option", name=name, exact=True)).to_be_visible()
+    page.get_by_role("option", name="threshold", exact=True).click(force=True)
+    expect(page.get_by_text("Sleep 임계값 (Mbps)")).to_be_visible()
+
+    _select_by_combobox(page, "operation-policy", "two-threshold")
+    expect(page.get_by_text("Wake 배수")).to_be_visible()
+
+    _select_by_combobox(page, "operation-policy", "dqn")
+    expect(page.get_by_text("DQN 학습률")).to_be_visible()
+    expect(page.get_by_text("DQN 감가율 γ")).to_be_visible()
+    expect(page.get_by_text("DQN 초기 epsilon")).to_be_visible()
+    expect(page.get_by_text("DQN epsilon decay")).to_be_visible()
+    expect(page.get_by_text("DQN 최소 epsilon")).to_be_visible()
 
 
 def test_kmeans_runs_golden_path(page: Page):

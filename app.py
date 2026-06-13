@@ -18,6 +18,7 @@ import threading
 import time
 import traceback
 import uuid
+from dataclasses import replace
 from typing import Any
 
 import numpy as np
@@ -53,6 +54,7 @@ from optimizers import (
     ProblemInput,
     capacity_from_bandwidth,
     compute_metrics,
+    compute_sinr,
     convert_to_geo,
     get_optimizer,
     sinr_coverage,
@@ -115,6 +117,59 @@ DYNAMIC_TRAFFIC_TYPE_OPTIONS = [
     {"label": "이동형 핫스팟", "value": "moving_hotspot"},
     {"label": "위치 전환형", "value": "switching_locations"},
 ]
+DEFAULT_OPERATION_POLICY = "always-on"
+OPERATION_POLICY_OPTIONS = [
+    {"label": "always-on", "value": "always-on"},
+    {"label": "threshold", "value": "threshold"},
+    {"label": "two-threshold", "value": "two-threshold"},
+    {"label": "greedy-off", "value": "greedy-off"},
+    {"label": "dqn", "value": "dqn"},
+]
+OPERATION_POLICY_VALUES = {item["value"] for item in OPERATION_POLICY_OPTIONS}
+OPERATION_ACTIVE_POWER_TX_MULTIPLIER = 8.0
+OPERATION_SLEEP_POWER_TX_MULTIPLIER = 0.5
+OPERATION_COST_PARAMS = {
+    "load_power_w": 216.0,
+    "switching_cost": 5.0,
+    "uncovered_penalty": 10.0,
+    "overload_penalty": 20.0,
+    "sleep_threshold_mbps": 5.0,
+}
+OPERATION_DEFAULT_PARAMS = {
+    **OPERATION_COST_PARAMS,
+    "wake_threshold_multiplier": 2.0,
+    "dqn_lr": 0.01,
+    "dqn_gamma": 0.9,
+    "dqn_epsilon": 1.0,
+    "dqn_epsilon_decay": 0.95,
+    "dqn_epsilon_min": 0.01,
+}
+OPERATION_PARAM_SPECS = {
+    "load_power_w": {"label": "부하 전력 계수 (W)", "step": 1.0, "min": 0.0},
+    "switching_cost": {"label": "전환 비용", "step": 0.5, "min": 0.0},
+    "uncovered_penalty": {"label": "미커버 페널티", "step": 0.5, "min": 0.0},
+    "overload_penalty": {"label": "과부하 페널티", "step": 0.5, "min": 0.0},
+    "sleep_threshold_mbps": {"label": "Sleep 임계값 (Mbps)", "step": 0.5, "min": 0.0},
+    "wake_threshold_multiplier": {"label": "Wake 배수", "step": 0.1, "min": 1.0},
+    "dqn_lr": {"label": "DQN 학습률", "step": 0.001, "min": 0.0},
+    "dqn_gamma": {"label": "DQN 감가율 γ", "step": 0.01, "min": 0.0, "max": 1.0},
+    "dqn_epsilon": {"label": "DQN 초기 epsilon", "step": 0.01, "min": 0.0, "max": 1.0},
+    "dqn_epsilon_decay": {"label": "DQN epsilon decay", "step": 0.01, "min": 0.0, "max": 1.0},
+    "dqn_epsilon_min": {"label": "DQN 최소 epsilon", "step": 0.01, "min": 0.0, "max": 1.0},
+}
+OPERATION_COMMON_PARAM_NAMES = [
+    "load_power_w",
+    "switching_cost",
+    "uncovered_penalty",
+    "overload_penalty",
+]
+OPERATION_POLICY_PARAM_NAMES = {
+    "always-on": [],
+    "threshold": ["sleep_threshold_mbps"],
+    "two-threshold": ["sleep_threshold_mbps", "wake_threshold_multiplier"],
+    "greedy-off": [],
+    "dqn": ["dqn_lr", "dqn_gamma", "dqn_epsilon", "dqn_epsilon_decay", "dqn_epsilon_min"],
+}
 
 APP_STATE: dict[str, dict[str, Any]] = {}
 _LAST_ACCESSED: dict[str, float] = {}
@@ -179,6 +234,11 @@ def normalize_triggered_bool(value: Any) -> bool:
     return bool(value)
 
 
+def normalize_operation_policy(value: Any) -> str:
+    value = str(value or DEFAULT_OPERATION_POLICY)
+    return value if value in OPERATION_POLICY_VALUES else DEFAULT_OPERATION_POLICY
+
+
 def decode_upload_to_bytes(contents: str | None) -> io.BytesIO | None:
     if not contents:
         return None
@@ -202,6 +262,64 @@ def safe_int(value: Any, default: int) -> int:
         return int(value)
     except Exception:
         return int(default)
+
+
+def normalize_operation_params(values: dict[str, Any] | None = None) -> dict[str, float]:
+    source = values or {}
+    params = {
+        name: safe_float(source.get(name), default)
+        for name, default in OPERATION_DEFAULT_PARAMS.items()
+    }
+
+    for name in (
+        "load_power_w",
+        "switching_cost",
+        "uncovered_penalty",
+        "overload_penalty",
+        "sleep_threshold_mbps",
+    ):
+        params[name] = max(0.0, params[name])
+    params["wake_threshold_multiplier"] = max(1.0, params["wake_threshold_multiplier"])
+    params["dqn_lr"] = max(0.0, params["dqn_lr"])
+    params["dqn_gamma"] = min(1.0, max(0.0, params["dqn_gamma"]))
+    params["dqn_epsilon"] = min(1.0, max(0.0, params["dqn_epsilon"]))
+    params["dqn_epsilon_decay"] = min(1.0, max(0.0, params["dqn_epsilon_decay"]))
+    params["dqn_epsilon_min"] = min(1.0, max(0.0, params["dqn_epsilon_min"]))
+    return params
+
+
+def operation_param_names_for_policy(policy: str) -> list[str]:
+    policy = normalize_operation_policy(policy)
+    return OPERATION_COMMON_PARAM_NAMES + OPERATION_POLICY_PARAM_NAMES.get(policy, [])
+
+
+def operation_active_mask_for_frame(
+    operation_results: dict[str, Any] | None,
+    station_count: int,
+    frame_index: int,
+) -> np.ndarray | None:
+    history = (operation_results or {}).get("history") or []
+    if station_count <= 0 or not history:
+        return None
+
+    idx = max(0, min(safe_int(frame_index, 0), len(history) - 1))
+    active_mask = history[idx].get("active_mask")
+    if not isinstance(active_mask, (list, tuple)):
+        return None
+
+    mask = np.asarray(active_mask, dtype=bool)
+    if len(mask) != station_count:
+        return None
+    return mask
+
+
+def _parse_operation_hyperparams(param_values, param_ids) -> dict[str, float]:
+    values: dict[str, Any] = {}
+    for value, id_obj in zip(param_values or [], param_ids or []):
+        name = id_obj.get("name") if isinstance(id_obj, dict) else None
+        if name in OPERATION_DEFAULT_PARAMS:
+            values[name] = value
+    return normalize_operation_params(values)
 
 
 def has_custom_region(custom_region: Any) -> bool:
@@ -377,6 +495,53 @@ def prop_params_base(
     }
 
 
+def live_visualization_state(
+    opt_results: dict[str, Any] | None,
+    spec_mode: str | None,
+    station_specs: list[dict[str, Any]] | None,
+    ui_tx_power: Any,
+    ui_path_loss_exp: Any,
+    ui_bandwidth_mhz: Any,
+    ui_sinr_threshold: Any,
+    ui_max_coord: Any,
+) -> tuple[dict[str, Any] | None, list[dict[str, Any]] | None]:
+    if not opt_results:
+        return opt_results, station_specs
+
+    prop = dict(opt_results.get("prop_params", {}))
+    bandwidth = safe_float(ui_bandwidth_mhz, prop.get("bandwidth_mhz", 10.0))
+    live_prop = prop_params_base(
+        path_loss_exponent=safe_float(ui_path_loss_exp, prop.get("path_loss_exponent", 3.5)),
+        bandwidth_mhz=bandwidth,
+        sinr_threshold_db=safe_float(ui_sinr_threshold, prop.get("sinr_threshold_db", 3.0)),
+        max_coord_stations=safe_int(ui_max_coord, int(prop.get("max_coord_stations", 1))),
+    )
+    live_prop["path_loss_ref_db"] = safe_float(prop.get("path_loss_ref_db"), live_prop["path_loss_ref_db"])
+
+    stations = opt_results.get("stations_geo") or []
+    station_count = len(stations)
+    prop_tx = np.asarray(prop.get("tx_power_dbm", [43.0]), dtype=float).ravel()
+    fallback_tx = safe_float(ui_tx_power, float(prop_tx[0]) if len(prop_tx) else 43.0)
+
+    if spec_mode == "기지국별 개별":
+        live_specs = station_specs
+        tx = coerce_station_tx_power_array(live_specs, station_count, fallback_tx)
+    else:
+        capacity = capacity_from_bandwidth(bandwidth)
+        live_specs = [
+            {
+                "tx_power_dbm": fallback_tx,
+                "bandwidth_mhz": bandwidth,
+                "capacity": capacity,
+            }
+            for _ in range(station_count)
+        ]
+        tx = np.full(station_count, fallback_tx, dtype=float)
+
+    live_prop["tx_power_dbm"] = tx.tolist()
+    return {**opt_results, "prop_params": live_prop}, live_specs
+
+
 def radius_from_tx(tx_power_dbm: np.ndarray, prop: dict) -> np.ndarray:
     n = max(float(prop["path_loss_exponent"]), 1e-9)
     noise_floor = np.asarray(prop["noise_floor_dbm"], dtype=float)  # 스칼라 또는 배열
@@ -519,6 +684,7 @@ def compute_status_overlay(
     opt_results: dict[str, Any] | None,
     opt_stats: dict[str, Any] | None,
     station_specs: list[dict[str, Any]] | None,
+    active_mask: np.ndarray | None = None,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     _empty = (np.zeros(len(df), dtype=int), np.zeros(0, dtype=float), np.full(len(df), np.nan))
     if not opt_results or not opt_stats:
@@ -535,27 +701,45 @@ def compute_status_overlay(
         return _empty
 
     station_points = station_df[["lat", "lon"]].values
+    station_count = len(station_points)
 
     prop = opt_results.get("prop_params", {})
     fallback_tx = float(np.asarray(prop.get("tx_power_dbm", [43.0]), dtype=float).ravel()[0])
-    tx = coerce_station_tx_power_array(station_specs, len(station_points), fallback_tx)
+    tx = coerce_station_tx_power_array(station_specs, station_count, fallback_tx)
 
     fallback_bw = float(prop.get("bandwidth_mhz", 10.0))
-    bw = coerce_station_bandwidth_array(station_specs, len(station_points), fallback_bw)
+    bw = coerce_station_bandwidth_array(station_specs, station_count, fallback_bw)
     noise_floor_per_station = -174.0 + 10.0 * np.log10(np.maximum(bw, 0.001) * 1e6) + 7.0
+
+    if active_mask is not None:
+        active_mask = np.asarray(active_mask, dtype=bool)
+        if len(active_mask) != station_count:
+            active_mask = None
+
+    if active_mask is None:
+        active_indices = np.arange(station_count)
+    else:
+        active_indices = np.where(active_mask)[0]
+
+    if len(active_indices) == 0:
+        return np.zeros(len(df), dtype=int), np.zeros(station_count, dtype=float), np.full(len(df), np.nan)
+
+    active_station_points = station_points[active_indices]
+    active_tx = tx[active_indices]
+    active_noise_floor = noise_floor_per_station[active_indices]
 
     traffic_mask = df["traffic"] > 0.1
     grid_points = df.loc[traffic_mask, ["lat", "lon", "traffic"]].values
     grid_indices = np.where(traffic_mask.to_numpy())[0]
 
     if len(grid_points) == 0:
-        return np.zeros(len(df), dtype=int), np.zeros(len(station_points), dtype=float), np.full(len(df), np.nan)
+        return np.zeros(len(df), dtype=int), np.zeros(station_count, dtype=float), np.full(len(df), np.nan)
 
     x_scale = env.width_m / max(env.lon_max - env.lon_min, 1e-12)
     y_scale = env.height_m / max(env.lat_max - env.lat_min, 1e-12)
 
-    st_x = (station_points[:, 1] - env.lon_min) * x_scale
-    st_y = (station_points[:, 0] - env.lat_min) * y_scale
+    st_x = (active_station_points[:, 1] - env.lon_min) * x_scale
+    st_y = (active_station_points[:, 0] - env.lat_min) * y_scale
     st_local = np.column_stack((st_x, st_y))
 
     gd_x = (grid_points[:, 1] - env.lon_min) * x_scale
@@ -564,7 +748,7 @@ def compute_status_overlay(
 
     prop_for_radius = {
         "path_loss_ref_db": float(prop.get("path_loss_ref_db", 38.0)),
-        "noise_floor_dbm": noise_floor_per_station,
+        "noise_floor_dbm": active_noise_floor,
         "sinr_threshold_db": float(prop.get("sinr_threshold_db", 3.0)),
         "path_loss_exponent": float(prop.get("path_loss_exponent", 3.5)),
         "bandwidth_mhz": fallback_bw,
@@ -575,16 +759,16 @@ def compute_status_overlay(
         weights=grid_points[:, 2],
         width_m=env.width_m,
         height_m=env.height_m,
-        radius_m=radius_from_tx(tx, prop_for_radius),
-        capacity=np.full(len(station_points), 1e10),
+        radius_m=radius_from_tx(active_tx, prop_for_radius),
+        capacity=np.full(len(active_indices), 1e10),
         lat_min=env.lat_min,
         lat_max=env.lat_max,
         lon_min=env.lon_min,
         lon_max=env.lon_max,
         path_loss_exponent=prop_for_radius["path_loss_exponent"],
         path_loss_ref_db=prop_for_radius["path_loss_ref_db"],
-        tx_power_dbm=tx,
-        noise_floor_dbm=noise_floor_per_station,
+        tx_power_dbm=active_tx,
+        noise_floor_dbm=active_noise_floor,
         sinr_threshold_db=prop_for_radius["sinr_threshold_db"],
         bandwidth_mhz=fallback_bw,
         interference_threshold_dbm=float(prop.get("noise_floor_dbm", -97.0)),
@@ -594,13 +778,13 @@ def compute_status_overlay(
     is_cov, srv_idx, best_sinr_db = sinr_coverage(st_local, problem)
 
     grid_status = np.zeros(len(df), dtype=int)
-    overlay_loads = np.zeros(len(station_points), dtype=float)
+    overlay_loads = np.zeros(station_count, dtype=float)
     sinr_per_cell = np.full(len(df), np.nan)
 
     for i in range(len(grid_points)):
         if is_cov[i]:
             grid_status[grid_indices[i]] = 1
-            overlay_loads[int(srv_idx[i])] += float(grid_points[i, 2])
+            overlay_loads[int(active_indices[int(srv_idx[i])])] += float(grid_points[i, 2])
         sinr_per_cell[grid_indices[i]] = float(best_sinr_db[i])
 
     return grid_status, overlay_loads, sinr_per_cell
@@ -646,6 +830,7 @@ def compute_frame_metrics(
     opt_results: dict[str, Any] | None,
     station_specs: list[dict[str, Any]] | None,
     frame_index: int | None = None,
+    active_mask: np.ndarray | None = None,
 ) -> dict[str, Any] | None:
     if env is None or not opt_results:
         return None
@@ -655,12 +840,25 @@ def compute_frame_metrics(
         return None
 
     prop = opt_results.get("prop_params", {})
-    k = len(stations_local)
+    original_k = len(stations_local)
     fallback_tx = float(np.asarray(prop.get("tx_power_dbm", [43.0]), dtype=float).ravel()[0])
-    tx = coerce_station_tx_power_array(station_specs, k, fallback_tx)
+    tx_all = coerce_station_tx_power_array(station_specs, original_k, fallback_tx)
     fallback_bw = float(prop.get("bandwidth_mhz", 10.0))
-    bw = coerce_station_bandwidth_array(station_specs, k, fallback_bw)
-    noise_floor_per_station = -174.0 + 10.0 * np.log10(np.maximum(bw, 0.001) * 1e6) + 7.0
+    bw_all = coerce_station_bandwidth_array(station_specs, original_k, fallback_bw)
+    noise_floor_all = -174.0 + 10.0 * np.log10(np.maximum(bw_all, 0.001) * 1e6) + 7.0
+
+    active_mask_applied = False
+    active_indices = np.arange(original_k)
+    if active_mask is not None:
+        mask = np.asarray(active_mask, dtype=bool)
+        if len(mask) == original_k:
+            active_mask_applied = True
+            active_indices = np.where(mask)[0]
+
+    stations_for_metrics = stations_local[active_indices]
+    tx = tx_all[active_indices]
+    noise_floor_per_station = noise_floor_all[active_indices]
+    k = len(stations_for_metrics)
 
     prop_for_radius = {
         "path_loss_ref_db": float(prop.get("path_loss_ref_db", 38.0)),
@@ -701,8 +899,12 @@ def compute_frame_metrics(
         max_coord_stations=int(prop.get("max_coord_stations", 1)),
     )
 
-    metrics = dict(compute_metrics(stations_local, problem))
+    metrics = dict(compute_metrics(stations_for_metrics, problem))
     metrics["n_stations"] = k
+    metrics["total_station_count"] = original_k
+    if active_mask_applied:
+        metrics["active_station_count"] = k
+        metrics["operation_active_mask_applied"] = True
     metrics["total_tx_power_w"] = float(np.sum(10 ** ((tx - 30) / 10)))
     return metrics
 
@@ -711,6 +913,7 @@ def compute_dynamic_scenario_summary(
     env: SyntheticEnvironment | None,
     opt_results: dict[str, Any] | None,
     station_specs: list[dict[str, Any]] | None,
+    operation_results: dict[str, Any] | None = None,
 ) -> dict[str, Any] | None:
     series = env.get_raw_traffic_series() if env is not None else None
     if series is None or getattr(series, "ndim", 0) != 3 or series.shape[0] <= 1:
@@ -718,8 +921,16 @@ def compute_dynamic_scenario_summary(
 
     traffic_coverage_pct = []
     max_station_load = 0.0
+    station_count = len((opt_results or {}).get("stations_geo") or [])
     for frame_idx in range(int(series.shape[0])):
-        metrics = compute_frame_metrics(env, opt_results, station_specs, frame_index=frame_idx)
+        active_mask = operation_active_mask_for_frame(operation_results, station_count, frame_idx)
+        metrics = compute_frame_metrics(
+            env,
+            opt_results,
+            station_specs,
+            frame_index=frame_idx,
+            active_mask=active_mask,
+        )
         if not metrics:
             continue
         total = float(metrics.get("total_traffic", 0.0))
@@ -740,6 +951,454 @@ def compute_dynamic_scenario_summary(
         "worst_traffic_coverage_pct": float(np.min(traffic_coverage_pct)),
         "max_station_load": max_station_load,
     }
+
+
+def _operation_frame_context(
+    env: SyntheticEnvironment,
+    opt_results: dict[str, Any],
+    station_specs: list[dict[str, Any]] | None,
+    frame_index: int,
+) -> dict[str, Any] | None:
+    stations_local = _stations_geo_to_local(env, opt_results.get("stations_geo"))
+    if stations_local is None or len(stations_local) == 0:
+        return None
+
+    prop = opt_results.get("prop_params", {})
+    k = len(stations_local)
+    fallback_tx = float(np.asarray(prop.get("tx_power_dbm", [43.0]), dtype=float).ravel()[0])
+    tx = coerce_station_tx_power_array(station_specs, k, fallback_tx)
+    fallback_bw = float(prop.get("bandwidth_mhz", 10.0))
+    bw = coerce_station_bandwidth_array(station_specs, k, fallback_bw)
+    noise_floor_per_station = -174.0 + 10.0 * np.log10(np.maximum(bw, 0.001) * 1e6) + 7.0
+    fallback_capacity = capacity_from_bandwidth(fallback_bw)
+    capacities = coerce_station_capacity_array(station_specs, k, fallback_capacity)
+    capacities = np.maximum(capacities, 1e-9)
+
+    prop_for_radius = {
+        "path_loss_ref_db": float(prop.get("path_loss_ref_db", 38.0)),
+        "noise_floor_dbm": noise_floor_per_station,
+        "sinr_threshold_db": float(prop.get("sinr_threshold_db", 3.0)),
+        "path_loss_exponent": float(prop.get("path_loss_exponent", 3.5)),
+        "bandwidth_mhz": fallback_bw,
+    }
+
+    traffic = _traffic_map_for_metrics(env, frame_index)
+    traffic_mask = traffic.ravel() > 0
+    weights = traffic.ravel()[traffic_mask] * float(opt_results.get("weight_scale", 1.0))
+    x_vals = env.x_grid.ravel()[traffic_mask]
+    y_vals = env.y_grid.ravel()[traffic_mask]
+    problem = ProblemInput(
+        X=np.column_stack((x_vals, y_vals)) if len(weights) > 0 else np.empty((0, 2)),
+        weights=weights,
+        width_m=env.width_m,
+        height_m=env.height_m,
+        radius_m=radius_from_tx(tx, prop_for_radius),
+        capacity=capacities,
+        lat_min=env.lat_min,
+        lat_max=env.lat_max,
+        lon_min=env.lon_min,
+        lon_max=env.lon_max,
+        path_loss_exponent=prop_for_radius["path_loss_exponent"],
+        path_loss_ref_db=prop_for_radius["path_loss_ref_db"],
+        tx_power_dbm=tx,
+        noise_floor_dbm=noise_floor_per_station,
+        sinr_threshold_db=prop_for_radius["sinr_threshold_db"],
+        bandwidth_mhz=float(prop.get("bandwidth_mhz", fallback_bw)),
+        score_mode=opt_results.get("score_mode", "traffic"),
+        spectral_efficiency_mode=opt_results.get("spectral_efficiency_mode", "shannon"),
+        weight_scale=float(opt_results.get("weight_scale", 1.0)),
+        interference_threshold_dbm=float(prop.get("noise_floor_dbm", -97.0)),
+        max_coord_stations=int(prop.get("max_coord_stations", 1)),
+    )
+
+    return {
+        "k": k,
+        "problem": problem,
+        "stations_local": stations_local,
+        "radius_m": np.asarray(problem.radius_m, dtype=float),
+        "tx_power_dbm": tx,
+        "noise_floor_dbm": noise_floor_per_station,
+        "weights": weights,
+        "capacities": capacities,
+        "sinr_threshold_linear": 10.0 ** (problem.sinr_threshold_db / 10.0),
+        "total_traffic": float(np.sum(weights)),
+    }
+
+
+def _operation_loads_for_mask(context: dict[str, Any], active_mask: np.ndarray) -> dict[str, Any]:
+    k = int(context["k"])
+    weights = np.asarray(context["weights"], dtype=float)
+    total_traffic = float(context["total_traffic"])
+    loads = np.zeros(k, dtype=float)
+
+    if k == 0 or weights.size == 0:
+        return {"loads": loads, "covered_traffic": 0.0, "uncovered_traffic": total_traffic}
+
+    active_indices = np.where(active_mask)[0]
+    if len(active_indices) == 0:
+        return {"loads": loads, "covered_traffic": 0.0, "uncovered_traffic": total_traffic}
+
+    active_problem = replace(
+        context["problem"],
+        radius_m=np.asarray(context["radius_m"], dtype=float)[active_indices],
+        capacity=np.asarray(context["capacities"], dtype=float)[active_indices],
+        tx_power_dbm=np.asarray(context["tx_power_dbm"], dtype=float)[active_indices],
+        noise_floor_dbm=np.asarray(context["noise_floor_dbm"], dtype=float)[active_indices],
+    )
+    active_sinr = compute_sinr(np.asarray(context["stations_local"], dtype=float)[active_indices], active_problem)
+    serving_local = np.argmax(active_sinr, axis=1)
+    best_sinr = active_sinr[np.arange(weights.size), serving_local]
+    covered_mask = best_sinr >= float(context["sinr_threshold_linear"])
+    real_serving = active_indices[serving_local]
+
+    if np.any(covered_mask):
+        np.add.at(loads, real_serving[covered_mask], weights[covered_mask])
+
+    covered_traffic = float(np.sum(weights[covered_mask]))
+    return {
+        "loads": loads,
+        "covered_traffic": covered_traffic,
+        "uncovered_traffic": max(0.0, total_traffic - covered_traffic),
+    }
+
+
+def _operation_step_cost(
+    context: dict[str, Any],
+    active_mask: np.ndarray,
+    prev_active_mask: np.ndarray,
+    params: dict[str, float],
+) -> dict[str, Any]:
+    active_mask = np.asarray(active_mask, dtype=bool)
+    prev_active_mask = np.asarray(prev_active_mask, dtype=bool)
+    loads_info = _operation_loads_for_mask(context, active_mask)
+    loads = loads_info["loads"]
+    capacities = np.asarray(context["capacities"], dtype=float)
+    tx_power_dbm = np.asarray(context["tx_power_dbm"], dtype=float)
+    tx_power_w = 10.0 ** ((tx_power_dbm - 30.0) / 10.0)
+    active_power_w = tx_power_w * OPERATION_ACTIVE_POWER_TX_MULTIPLIER
+    sleep_power_w = tx_power_w * OPERATION_SLEEP_POWER_TX_MULTIPLIER
+
+    load_ratio = np.divide(loads, capacities, out=np.zeros_like(loads), where=capacities > 0)
+    load_ratio = np.clip(load_ratio, 0.0, 1.0)
+    energy_cost = float(
+        np.sum(np.where(
+            active_mask,
+            active_power_w + load_ratio * params["load_power_w"],
+            sleep_power_w,
+        ))
+    )
+    switching_cost = float(np.sum(active_mask & (~prev_active_mask)) * params["switching_cost"])
+    overload_traffic = float(np.sum(np.maximum(0.0, loads - capacities)))
+    penalty_cost = float(
+        loads_info["uncovered_traffic"] * params["uncovered_penalty"]
+        + overload_traffic * params["overload_penalty"]
+    )
+    step_opex = energy_cost + switching_cost + penalty_cost
+
+    return {
+        "loads": loads,
+        "active_count": int(np.sum(active_mask)),
+        "energy_cost": energy_cost,
+        "switching_cost": switching_cost,
+        "penalty_cost": penalty_cost,
+        "uncovered_traffic": float(loads_info["uncovered_traffic"]),
+        "overload_traffic": overload_traffic,
+        "covered_traffic": float(loads_info["covered_traffic"]),
+        "step_opex": float(step_opex),
+        "active_mask": active_mask.tolist(),
+    }
+
+
+def _summarize_operation_history(
+    policy: str,
+    station_count: int,
+    history: list[dict[str, Any]],
+    policy_note: str | None = None,
+) -> dict[str, Any]:
+    total_energy = float(sum(row["energy_cost"] for row in history))
+    total_switching = float(sum(row["switching_cost"] for row in history))
+    total_penalty = float(sum(row["penalty_cost"] for row in history))
+    active_counts = [int(row["active_count"]) for row in history]
+
+    return {
+        "policy": policy,
+        "policy_note": policy_note,
+        "frame_count": len(history),
+        "station_count": int(station_count),
+        "total_opex": total_energy + total_switching + total_penalty,
+        "total_energy_cost": total_energy,
+        "total_switching_cost": total_switching,
+        "total_penalty_cost": total_penalty,
+        "total_uncovered_traffic": float(sum(row["uncovered_traffic"] for row in history)),
+        "total_overload_traffic": float(sum(row["overload_traffic"] for row in history)),
+        "avg_active_count": float(np.mean(active_counts)) if active_counts else 0.0,
+        "min_active_count": int(np.min(active_counts)) if active_counts else 0,
+        "max_active_count": int(np.max(active_counts)) if active_counts else 0,
+        "history": history,
+    }
+
+
+def evaluate_operation_optimization(
+    env: SyntheticEnvironment | None,
+    opt_results: dict[str, Any] | None,
+    station_specs: list[dict[str, Any]] | None,
+    policy: str,
+    operation_params: dict[str, Any] | None = None,
+) -> dict[str, Any] | None:
+    series = env.get_raw_traffic_series() if env is not None else None
+    if env is None or not opt_results or series is None or getattr(series, "ndim", 0) != 3 or series.shape[0] <= 1:
+        return None
+
+    policy = normalize_operation_policy(policy)
+    params = normalize_operation_params(operation_params)
+    frame_count = int(series.shape[0])
+    first_context = _operation_frame_context(env, opt_results, station_specs, 0)
+    if not first_context:
+        return None
+
+    k = int(first_context["k"])
+    prev_active_mask = np.ones(k, dtype=bool)
+    dqn_agent = None
+    dqn_note = None
+    history: list[dict[str, Any]] = []
+    baseline_history: list[dict[str, Any]] = []
+
+    if policy == "dqn":
+        try:
+            from optimizers.drl.dqn_agent import IndependentDQNAgent
+            dqn_agent = IndependentDQNAgent(
+                state_dim=2,
+                action_dim=2,
+                lr=params["dqn_lr"],
+                gamma=params["dqn_gamma"],
+            )
+            dqn_agent.epsilon = params["dqn_epsilon"]
+            dqn_agent.epsilon_decay = params["dqn_epsilon_decay"]
+            dqn_agent.epsilon_min = params["dqn_epsilon_min"]
+        except Exception as exc:  # pragma: no cover - optional torch path
+            dqn_note = f"DQN 초기화 실패로 threshold 정책을 사용했습니다: {exc}"
+            policy = "threshold"
+
+    for frame_idx in range(frame_count):
+        context = first_context if frame_idx == 0 else _operation_frame_context(env, opt_results, station_specs, frame_idx)
+        if not context:
+            continue
+
+        all_active = np.ones(k, dtype=bool)
+        baseline = _operation_loads_for_mask(context, all_active)
+        baseline_loads = baseline["loads"]
+        baseline_step = _operation_step_cost(context, all_active, np.ones(k, dtype=bool), params)
+        baseline_step["time_step"] = frame_idx
+        baseline_history.append({name: value for name, value in baseline_step.items() if name != "loads"})
+        capacities = np.asarray(context["capacities"], dtype=float)
+        threshold = float(params["sleep_threshold_mbps"])
+
+        if policy == "always-on":
+            active_mask = all_active
+        elif policy == "threshold":
+            active_mask = baseline_loads > threshold
+            if k > 0 and not np.any(active_mask):
+                active_mask[int(np.argmax(baseline_loads))] = True
+        elif policy == "two-threshold":
+            active_mask = prev_active_mask.copy()
+            active_mask[baseline_loads > threshold * params["wake_threshold_multiplier"]] = True
+            active_mask[baseline_loads < threshold] = False
+            if k > 0 and not np.any(active_mask):
+                active_mask[int(np.argmax(baseline_loads))] = True
+        elif policy == "greedy-off":
+            active_mask = all_active.copy()
+            best_cost = _operation_step_cost(context, active_mask, prev_active_mask, params)["step_opex"]
+            improved = True
+            while improved and np.sum(active_mask) > 1:
+                improved = False
+                best_candidate = active_mask
+                for station_idx in np.where(active_mask)[0]:
+                    candidate = active_mask.copy()
+                    candidate[station_idx] = False
+                    candidate_cost = _operation_step_cost(context, candidate, prev_active_mask, params)["step_opex"]
+                    if candidate_cost < best_cost:
+                        best_cost = candidate_cost
+                        best_candidate = candidate
+                        improved = True
+                active_mask = best_candidate
+        elif policy == "dqn" and dqn_agent is not None:
+            states = np.column_stack((
+                np.clip(baseline_loads / capacities, 0.0, 1.0),
+                prev_active_mask.astype(float),
+            ))
+            actions = dqn_agent.get_actions_batch(states, train=True)
+            active_mask = actions.astype(bool)
+            if k > 0 and not np.any(active_mask):
+                active_mask[int(np.argmax(baseline_loads))] = True
+        else:
+            active_mask = all_active
+
+        step = _operation_step_cost(context, active_mask, prev_active_mask, params)
+        step["time_step"] = frame_idx
+        history.append({name: value for name, value in step.items() if name != "loads"})
+
+        if policy == "dqn" and dqn_agent is not None:
+            rewards = np.full(k, -float(step["step_opex"]) / 100.0, dtype=float)
+            next_states = np.column_stack((
+                np.clip(step["loads"] / capacities, 0.0, 1.0),
+                active_mask.astype(float),
+            ))
+            dqn_agent.train_step(states, active_mask.astype(int), rewards, next_states)
+            dqn_agent.update_epsilon()
+
+        prev_active_mask = active_mask.copy()
+
+    if not history:
+        return None
+
+    result = _summarize_operation_history(policy, k, history, dqn_note)
+    result["baseline"] = _summarize_operation_history("always-on", k, baseline_history)
+    result["operation_params"] = {
+        name: params[name]
+        for name in operation_param_names_for_policy(policy)
+        if name in params
+    }
+    return result
+
+
+def operation_summary_rows(result: dict[str, Any] | None) -> list[dict[str, str]]:
+    if not result:
+        return []
+
+    return [
+        {"항목": "운영 정책", "값": str(result.get("policy", "-"))},
+        {"항목": "프레임 수", "값": f"{int(result.get('frame_count', 0))}"},
+        {"항목": "총 OPEX", "값": f"{float(result.get('total_opex', 0.0)):.1f}"},
+        {"항목": "Energy cost", "값": f"{float(result.get('total_energy_cost', 0.0)):.1f}"},
+        {"항목": "Switching cost", "값": f"{float(result.get('total_switching_cost', 0.0)):.1f}"},
+        {"항목": "Penalty cost", "값": f"{float(result.get('total_penalty_cost', 0.0)):.1f}"},
+        {"항목": "평균 Active 기지국", "값": f"{float(result.get('avg_active_count', 0.0)):.1f}"},
+        {"항목": "Active 범위", "값": f"{result.get('min_active_count', '-')} - {result.get('max_active_count', '-')}"},
+        {"항목": "미커버 트래픽", "값": format_metric_value("트래픽", result.get("total_uncovered_traffic"))},
+        {"항목": "용량 초과 트래픽", "값": format_metric_value("트래픽", result.get("total_overload_traffic"))},
+    ]
+
+
+def operation_comparison_rows(result: dict[str, Any] | None) -> list[dict[str, str]]:
+    if not result or not result.get("baseline"):
+        return []
+
+    before = result["baseline"]
+    after = result
+    before_label = f"전({before.get('policy', 'always-on')})"
+    after_label = f"후({after.get('policy', '-')})"
+
+    def numeric(key: str, source: dict[str, Any]) -> float:
+        try:
+            return float(source.get(key, 0.0))
+        except Exception:
+            return 0.0
+
+    def delta_text(key: str) -> str:
+        before_value = numeric(key, before)
+        after_value = numeric(key, after)
+        delta = after_value - before_value
+        pct = (delta / before_value * 100.0) if abs(before_value) > 1e-9 else None
+        if pct is None:
+            return f"{delta:+.1f}"
+        return f"{delta:+.1f} ({pct:+.1f}%)"
+
+    rows = [
+        ("총 OPEX", "total_opex", lambda v: f"{v:.1f}"),
+        ("Energy cost", "total_energy_cost", lambda v: f"{v:.1f}"),
+        ("Switching cost", "total_switching_cost", lambda v: f"{v:.1f}"),
+        ("Penalty cost", "total_penalty_cost", lambda v: f"{v:.1f}"),
+        ("평균 Active 기지국", "avg_active_count", lambda v: f"{v:.1f}"),
+        ("미커버 트래픽", "total_uncovered_traffic", lambda v: format_metric_value("트래픽", v)),
+        ("용량 초과 트래픽", "total_overload_traffic", lambda v: format_metric_value("트래픽", v)),
+    ]
+
+    return [
+        {
+            "항목": label,
+            before_label: formatter(numeric(key, before)),
+            after_label: formatter(numeric(key, after)),
+            "변화": delta_text(key),
+        }
+        for label, key, formatter in rows
+    ]
+
+
+def operation_history_figure(result: dict[str, Any] | None) -> go.Figure:
+    fig = go.Figure()
+    history = (result or {}).get("history") or []
+    if not history:
+        fig.add_annotation(
+            text="운영 최적화 결과가 없습니다.",
+            x=0.5,
+            y=0.5,
+            showarrow=False,
+            xref="paper",
+            yref="paper",
+        )
+    else:
+        steps = [row["time_step"] for row in history]
+        fig.add_trace(go.Bar(
+            x=steps,
+            y=[row["energy_cost"] for row in history],
+            name="Energy",
+            marker_color="#7132f5",
+        ))
+        fig.add_trace(go.Bar(
+            x=steps,
+            y=[row["switching_cost"] for row in history],
+            name="Switching",
+            marker_color="#9ca3af",
+        ))
+        fig.add_trace(go.Bar(
+            x=steps,
+            y=[row["penalty_cost"] for row in history],
+            name="Penalty",
+            marker_color="#cf202f",
+        ))
+        fig.add_trace(go.Scatter(
+            x=steps,
+            y=[row["active_count"] for row in history],
+            mode="lines+markers",
+            name="Active BS",
+            yaxis="y2",
+            line={"color": "#0a0b0d", "width": 2},
+        ))
+
+    fig.update_layout(
+        barmode="stack",
+        height=260,
+        margin={"l": 45, "r": 45, "t": 16, "b": 36},
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        xaxis={"title": "Frame", "gridcolor": "#dedee5"},
+        yaxis={"title": "Cost", "gridcolor": "#dedee5"},
+        yaxis2={"title": "Active BS", "overlaying": "y", "side": "right"},
+        legend={"orientation": "h", "y": -0.25},
+    )
+    return fig
+
+
+def render_operation_status(result: dict[str, Any] | None):
+    if not result:
+        return html.Span("운영 최적화 결과가 없습니다.", style={"color": "#b91c1c"})
+
+    note = result.get("policy_note")
+    children = [
+        html.Div(
+            f"완료 | 정책 {result.get('policy')} | 총 OPEX {float(result.get('total_opex', 0.0)):.1f}",
+            style={"color": "#166534", "fontWeight": "600"},
+        ),
+        html.Div(
+            f"Energy {float(result.get('total_energy_cost', 0.0)):.1f} / "
+            f"Switching {float(result.get('total_switching_cost', 0.0)):.1f} / "
+            f"Penalty {float(result.get('total_penalty_cost', 0.0)):.1f}",
+            style={"marginTop": "3px"},
+        ),
+    ]
+    if note:
+        children.append(html.Div(note, style={"marginTop": "3px", "color": "#b45309"}))
+    return html.Div(children)
 
 
 def build_traffic_geojson(
@@ -833,7 +1492,9 @@ def build_station_popup(
     tx_power: float,
     radius_m: float,
     bandwidth: float = 10.0,
+    operation_status: str | None = None,
 ):
+    status_suffix = f" | {operation_status}" if operation_status else ""
     return dl.Popup(
         children=[
             html.Div(
@@ -848,7 +1509,7 @@ def build_station_popup(
                     html.Hr(style={"margin": "8px 0"}),
 
                     html.Div(
-                        f"Load: {load:.1f}",
+                        f"Load: {load:.1f}{status_suffix}",
                         id={"type": "station-popup-load", "index": station_idx},
                     ),
                     html.Div(f"Tx Power: {tx_power:.1f} dBm"),
@@ -931,6 +1592,7 @@ def build_station_circles(
     station_specs: list[dict[str, Any]] | None,
     selected_station_idx: int | None,
     overlay_loads: np.ndarray,
+    active_mask: np.ndarray | None = None,
 ) -> list[Any]:
     """커버 반경 원만 반환 (station-specs 변경 시 실시간 갱신, 팝업 없음)."""
     d = _station_layer_data(opt_results, opt_stats, station_specs, overlay_loads)
@@ -944,14 +1606,19 @@ def build_station_circles(
 
     for i in range(len(stations)):
         selected = selected_station_idx == i
+        active = True if active_mask is None or i >= len(active_mask) else bool(active_mask[i])
+        color = "#facc15" if selected and active else "#f59e0b" if selected else "#149e61" if active else "#6b7280"
+        fill_color = "#149e61" if active else "#9ca3af"
         layers.append(
             dl.Circle(
                 center=[float(st_lats[i]), float(st_lons[i])],
                 radius=float(d["radii"][i]) if i < len(d["radii"]) else 300.0,
-                color="yellow" if selected else "green",
+                color=color,
                 weight=3 if selected else 1,
+                dashArray=None if active else "5 5",
                 fill=True,
-                fillOpacity=0.18 if selected else 0.1,
+                fillColor=fill_color,
+                fillOpacity=0.18 if selected and active else 0.1 if active else 0.03,
                 interactive=False,
             )
         )
@@ -964,6 +1631,7 @@ def build_station_markers(
     station_specs: list[dict[str, Any]] | None,
     selected_station_idx: int | None,
     overlay_loads: np.ndarray,
+    active_mask: np.ndarray | None = None,
 ) -> list[Any]:
     """팝업 포함 마커만 반환 (opt-meta / selected-station 변경 시에만 갱신)."""
     d = _station_layer_data(opt_results, opt_stats, station_specs, overlay_loads)
@@ -976,9 +1644,11 @@ def build_station_markers(
     layers = []
 
     for i in range(len(stations)):
+        active = True if active_mask is None or i >= len(active_mask) else bool(active_mask[i])
+        operation_status = "ON" if active else "SLEEP/OFF"
         lat = float(st_lats[i])
         lon = float(st_lons[i])
-        load = float(d["overlay_loads"][i]) if i < len(d["overlay_loads"]) else 0.0
+        load = float(d["overlay_loads"][i]) if active and i < len(d["overlay_loads"]) else 0.0
         radius_m = float(d["radii"][i]) if i < len(d["radii"]) else 300.0
         tx_i = float(d["tx"][i]) if i < len(d["tx"]) else d["fallback_tx"]
         bw_i = float(d["bw"][i]) if i < len(d["bw"]) else d["fallback_bw"]
@@ -989,9 +1659,10 @@ def build_station_markers(
             lat=lat, lon=lon,
             load=load,
             tx_power=tx_i, radius_m=radius_m, bandwidth=bw_i,
+            operation_status=operation_status if active_mask is not None else None,
         )
         tooltip = dl.Tooltip(
-            f"Station #{i + 1}" + (" (선택됨)" if selected else "")
+            f"Station #{i + 1} | {operation_status}" + (" (선택됨)" if selected else "")
         )
 
         # 중요: n_clicks=0을 명시해 dash-leaflet이 클릭 가능한 레이어로 인식하도록 한다.
@@ -999,6 +1670,8 @@ def build_station_markers(
             layers.append(dl.Marker(
                 id={"type": "station-marker", "index": int(i)},
                 position=[lat, lon],
+                opacity=1.0 if active else 0.35,
+                zIndexOffset=250 if active else -250,
                 interactive=True, n_clicks=0, bubblingMouseEvents=False,
                 children=[tooltip, popup],
             ))
@@ -1006,8 +1679,11 @@ def build_station_markers(
             layers.append(dl.CircleMarker(
                 id={"type": "station-marker", "index": int(i)},
                 center=[lat, lon], radius=13,
-                color="green", weight=4, fill=True,
-                fillColor="green", fillOpacity=0.95,
+                color="#149e61" if active else "#6b7280",
+                weight=4 if active else 2,
+                fill=True,
+                fillColor="#149e61" if active else "#9ca3af",
+                fillOpacity=0.95 if active else 0.35,
                 interactive=True, n_clicks=0, bubblingMouseEvents=False,
                 children=[tooltip, popup],
             ))
@@ -1160,6 +1836,7 @@ def dynamic_frame_figure(
     env: SyntheticEnvironment | None,
     opt_results: dict[str, Any] | None,
     station_specs: list[dict[str, Any]] | None,
+    operation_results: dict[str, Any] | None = None,
 ) -> go.Figure:
     fig = go.Figure()
     series = env.get_raw_traffic_series() if env is not None else None
@@ -1177,8 +1854,16 @@ def dynamic_frame_figure(
         coverage_pct: list[float] = []
         total_traffic: list[float] = []
         max_loads: list[float] = []
+        station_count = len((opt_results or {}).get("stations_geo") or [])
         for frame_idx in frames:
-            metrics = compute_frame_metrics(env, opt_results, station_specs, frame_index=frame_idx)
+            active_mask = operation_active_mask_for_frame(operation_results, station_count, frame_idx)
+            metrics = compute_frame_metrics(
+                env,
+                opt_results,
+                station_specs,
+                frame_index=frame_idx,
+                active_mask=active_mask,
+            )
             if metrics:
                 total = float(metrics.get("total_traffic", 0.0))
                 covered = float(metrics.get("covered_traffic", 0.0))
@@ -1769,19 +2454,6 @@ def algo_sidebar_layout():
         ),
 
         _section(
-            "알고리즘",
-            [
-                html.Label("알고리즘 선택"),
-                dcc.Dropdown(
-                    id="algo-select",
-                    options=[{"label": x, "value": x} for x in available_algos],
-                    value=default_algo,
-                ),
-                html.Div(id="hyperparam-controls"),
-            ],
-        ),
-
-        _section(
             "전파 모델",
             [
                 html.Label("경로 손실 지수 n"),
@@ -1837,24 +2509,68 @@ def algo_sidebar_layout():
                     ],
                     style={"display": "none", "marginTop": "8px"},
                 ),
-
-                html.Button(
-                    "계산 실행",
-                    id="optimize-btn",
-                    n_clicks=0,
-                    className="primary-button",
-                ),
-
-                html.Div(
-                    dcc.Graph(
-                        id="sidebar-convergence-chart",
-                        style={"height": "160px"},
-                        config={"displayModeBar": False},
-                    ),
-                    id="sidebar-convergence-wrap",
-                    style={"display": "none", "marginTop": "10px"},
-                ),
             ],
+        ),
+
+        _section(
+            "알고리즘",
+            [
+                html.Label("알고리즘 선택"),
+                dcc.Dropdown(
+                    id="algo-select",
+                    options=[{"label": x, "value": x} for x in available_algos],
+                    value=default_algo,
+                ),
+                html.Div(id="hyperparam-controls"),
+            ],
+        ),
+
+        html.Button(
+            "계산 실행",
+            id="optimize-btn",
+            n_clicks=0,
+            className="primary-button",
+            style={"marginBottom": "10px"},
+        ),
+
+        html.Div(
+            _section(
+                "운영 최적화",
+                [
+                    html.Label("운영 정책"),
+                    dcc.Dropdown(
+                        id="operation-policy",
+                        options=OPERATION_POLICY_OPTIONS,
+                        value=DEFAULT_OPERATION_POLICY,
+                        clearable=False,
+                    ),
+                    html.Div(id="operation-hyperparam-controls"),
+                    html.Button(
+                        "운영 최적화 실행",
+                        id="operation-run-btn",
+                        n_clicks=0,
+                        className="primary-button",
+                        disabled=True,
+                        style={"width": "100%", "marginTop": "10px"},
+                    ),
+                    html.Div(
+                        id="operation-status",
+                        style={"fontSize": "12px", "marginTop": "8px", "color": "#6b7280"},
+                    ),
+                ],
+            ),
+            id="operation-optimization-section",
+            style={"display": "none", "marginTop": "10px"},
+        ),
+
+        html.Div(
+            dcc.Graph(
+                id="sidebar-convergence-chart",
+                style={"height": "160px"},
+                config={"displayModeBar": False},
+            ),
+            id="sidebar-convergence-wrap",
+            style={"display": "none", "marginTop": "10px"},
         ),
 
         _section(
@@ -1923,6 +2639,7 @@ def serve_layout():
             dcc.Store(id="session-id", data=session_id),
             dcc.Store(id="env-meta"),
             dcc.Store(id="opt-meta"),
+            dcc.Store(id="operation-meta"),
             dcc.Store(id="range-meta"),
             dcc.Store(id="selected-station", data=None),
             dcc.Store(id="drawn-region-store", data=None),
@@ -2492,6 +3209,7 @@ def toggle_main_view(view_mode):
     Input("main-view-mode", "value"),
     Input("env-meta", "data"),
     Input("opt-meta", "data"),
+    Input("operation-meta", "data"),
     Input("range-meta", "data"),
     Input("sweep-meta", "data"),
     Input("algo-compare-meta", "data"),
@@ -2502,6 +3220,7 @@ def render_analysis_view(
     view_mode,
     env_meta,
     opt_meta,
+    _operation_meta,
     range_meta,
     sweep_meta,
     algo_compare_meta,
@@ -2514,8 +3233,18 @@ def render_analysis_view(
     state = get_session_state(session_id)
     env = state.get("env")
     opt_results = state.get("opt_results")
-    metrics = compute_frame_metrics(env, opt_results, station_specs) or state.get("opt_stats")
-    dynamic_summary = compute_dynamic_scenario_summary(env, opt_results, station_specs)
+    operation_results = state.get("operation_results")
+    station_count = len((opt_results or {}).get("stations_geo") or [])
+    active_mask = operation_active_mask_for_frame(
+        operation_results,
+        station_count,
+        int(getattr(env, "dynamic_frame_index", 0)) if env is not None else 0,
+    )
+    metrics = (
+        compute_frame_metrics(env, opt_results, station_specs, active_mask=active_mask)
+        or state.get("opt_stats")
+    )
+    dynamic_summary = compute_dynamic_scenario_summary(env, opt_results, station_specs, operation_results)
     range_results = state.get("range_results") or []
     sweep_results = state.get("sweep_results") or []
     compare_results = state.get("algo_compare_results") or []
@@ -2541,7 +3270,7 @@ def render_analysis_view(
             {"항목": "최대 부하", "값": format_metric_value("부하", dynamic_summary["max_station_load"])},
         ], page_size=4))
         dynamic_children.append(dcc.Graph(
-            figure=dynamic_frame_figure(env, opt_results, station_specs),
+            figure=dynamic_frame_figure(env, opt_results, station_specs, operation_results),
             config={"displayModeBar": False},
         ))
     else:
@@ -2569,6 +3298,17 @@ def render_analysis_view(
         else [analysis_empty("기지국 결과가 없습니다.")]
     )
 
+    operation_children: list[Any] = []
+    if operation_results:
+        operation_children.append(compact_table(operation_comparison_rows(operation_results), page_size=10))
+        operation_children.append(compact_table(operation_summary_rows(operation_results), page_size=10))
+        operation_children.append(dcc.Graph(
+            figure=operation_history_figure(operation_results),
+            config={"displayModeBar": False},
+        ))
+    else:
+        operation_children.append(analysis_empty("운영 최적화 실행 후 OPEX 결과가 표시됩니다."))
+
     sweep_children = (
         [compact_table(sweep_summary_rows(sweep_results), page_size=10)]
         if sweep_results
@@ -2589,6 +3329,7 @@ def render_analysis_view(
                 analysis_section("동적 트래픽 시나리오", dynamic_children),
                 analysis_section("최적화 결과", optimization_children),
                 analysis_section("기지국별 분석", station_children),
+                analysis_section("운영 최적화 결과", operation_children),
                 analysis_section("Sweep 결과", sweep_children),
                 analysis_section("알고리즘 비교", compare_children),
             ],
@@ -2607,10 +3348,72 @@ def toggle_multi_hotspot_controls(pattern):
 
 @app.callback(
     Output("dynamic-traffic-controls", "style"),
+    Output("operation-optimization-section", "style"),
     Input("dynamic-traffic", "value"),
 )
 def toggle_dynamic_controls(dynamic_value):
-    return {"display": "block" if normalize_triggered_bool(dynamic_value) else "none"}
+    dynamic_style = {"display": "block" if normalize_triggered_bool(dynamic_value) else "none"}
+    operation_style = {**dynamic_style, "marginTop": "10px"}
+    return dynamic_style, operation_style
+
+
+@app.callback(
+    Output("operation-run-btn", "disabled"),
+    Input("dynamic-traffic", "value"),
+    Input("opt-meta", "data"),
+    Input("env-meta", "data"),
+)
+def toggle_operation_run_button(dynamic_value, opt_meta, env_meta):
+    return not (normalize_triggered_bool(dynamic_value) and opt_meta and env_meta)
+
+
+@app.callback(
+    Output("operation-status", "children"),
+    Output("operation-meta", "data"),
+    Input("operation-run-btn", "n_clicks"),
+    State("session-id", "data"),
+    State("operation-policy", "value"),
+    State({"type": "operation-hyperparam", "name": ALL, "kind": ALL}, "value"),
+    State({"type": "operation-hyperparam", "name": ALL, "kind": ALL}, "id"),
+    State("station-specs-store", "data"),
+    prevent_initial_call=True,
+)
+def run_operation_optimization(
+    n_clicks,
+    session_id,
+    operation_policy,
+    operation_param_values,
+    operation_param_ids,
+    station_specs,
+):
+    if not n_clicks:
+        raise PreventUpdate
+
+    state = get_session_state(session_id)
+    env = state.get("env")
+    opt_results = state.get("opt_results")
+    operation_params = _parse_operation_hyperparams(operation_param_values, operation_param_ids)
+    result = evaluate_operation_optimization(
+        env,
+        opt_results,
+        station_specs,
+        normalize_operation_policy(operation_policy),
+        operation_params,
+    )
+    if result is None:
+        return (
+            html.Span(
+                "동적 트래픽 데이터와 기지국 위치 최적화 결과가 필요합니다.",
+                style={"color": "#b91c1c", "fontWeight": "600"},
+            ),
+            no_update,
+        )
+
+    state["operation_results"] = result
+    if opt_results is not None:
+        opt_results["operation_policy"] = result["policy"]
+        opt_results["operation_params"] = result.get("operation_params")
+    return render_operation_status(result), version_token()
 
 
 @app.callback(
@@ -2672,6 +3475,71 @@ def render_hyperparam_controls(algo):
         elif p.kind == "bool":
             controls.append(dcc.Checklist(id=cid, options=[{"label": "사용", "value": "on"}], value=["on"] if bool(p.default) else []))
     return controls
+
+
+def _operation_param_input(name: str):
+    spec = OPERATION_PARAM_SPECS[name]
+    input_props = {
+        "id": {"type": "operation-hyperparam", "name": name, "kind": "float"},
+        "type": "number",
+        "value": OPERATION_DEFAULT_PARAMS[name],
+        "step": spec["step"],
+        "style": {"width": "100%"},
+    }
+    if "min" in spec:
+        input_props["min"] = spec["min"]
+    if "max" in spec:
+        input_props["max"] = spec["max"]
+
+    return html.Div(
+        [
+            html.Label(spec["label"], style={"fontSize": "12px", "marginBottom": "2px"}),
+            dcc.Input(**input_props),
+        ],
+        style={"minWidth": 0},
+    )
+
+
+@app.callback(
+    Output("operation-hyperparam-controls", "children"),
+    Input("operation-policy", "value"),
+)
+def render_operation_hyperparam_controls(policy):
+    policy = normalize_operation_policy(policy)
+    policy_params = OPERATION_POLICY_PARAM_NAMES.get(policy, [])
+
+    groups = [
+        html.Div(
+            [
+                html.Div(
+                    [_operation_param_input(name) for name in OPERATION_COMMON_PARAM_NAMES],
+                    style={
+                        "display": "grid",
+                        "gridTemplateColumns": "repeat(auto-fit, minmax(118px, 1fr))",
+                        "gap": "8px",
+                    },
+                ),
+            ]
+        )
+    ]
+
+    if policy_params:
+        groups.append(
+            html.Div(
+                [
+                    html.Div(
+                        [_operation_param_input(name) for name in policy_params],
+                        style={
+                            "display": "grid",
+                            "gridTemplateColumns": "repeat(auto-fit, minmax(118px, 1fr))",
+                            "gap": "8px",
+                        },
+                    ),
+                ]
+            )
+        )
+
+    return html.Div(groups, style={"marginTop": "10px"})
 
 
 @app.callback(
@@ -2944,6 +3812,7 @@ def create_environment(
         state.pop("opt_stats", None)
         state.pop("range_results", None)
         state.pop("station_overlay_loads", None)
+        state.pop("operation_results", None)
 
         msg = (
             f"가상 환경 생성 완료 | 영역: {width_km:.2f} km × {height_km:.2f} km | "
@@ -3069,24 +3938,38 @@ def set_dynamic_traffic_frame(frame_idx, session_id):
     Input("env-meta", "data"),
     Input("opt-meta", "data"),
     Input("station-specs-store", "data"),
+    Input("spec-mode", "value"),
+    Input("ui-tx-power", "value"),
+    Input("ui-path-loss-exp", "value"),
+    Input("ui-bandwidth-mhz", "value"),
+    Input("ui-sinr-threshold", "value"),
+    Input("ui-max-coord", "value"),
     Input("selected-station", "data"),
     Input("map-layer-mode", "value"),
     Input("custom-region-store", "data"),
     Input("algo-history-store", "data"),
     Input("algo-history-slider", "value"),
     Input("opt-live-store", "data"),
+    Input("operation-meta", "data"),
     State("session-id", "data"),
 )
 def update_map_layers(
     env_meta,
     opt_meta,
     station_specs,
+    spec_mode,
+    ui_tx_power,
+    ui_path_loss_exp,
+    ui_bandwidth_mhz,
+    ui_sinr_threshold,
+    ui_max_coord,
     selected_station_idx,
     map_layer_mode,
     custom_region,
     algo_history,
     history_frame_idx,
     opt_live,
+    operation_meta,
     session_id,
 ):
     children: list = []
@@ -3115,6 +3998,23 @@ def update_map_layers(
 
     opt_results = state.get("opt_results")
     opt_stats = state.get("opt_stats")
+    opt_results, station_specs = live_visualization_state(
+        opt_results,
+        spec_mode,
+        station_specs,
+        ui_tx_power,
+        ui_path_loss_exp,
+        ui_bandwidth_mhz,
+        ui_sinr_threshold,
+        ui_max_coord,
+    )
+    operation_results = state.get("operation_results")
+    station_count = len((opt_results or {}).get("stations_geo") or [])
+    active_mask = operation_active_mask_for_frame(
+        operation_results,
+        station_count,
+        int(getattr(env, "dynamic_frame_index", 0)),
+    )
 
     df = env_dataframe_for_current_frame(env)
     status_list, overlay_loads, sinr_per_cell = compute_status_overlay(
@@ -3123,6 +4023,7 @@ def update_map_layers(
         opt_results,
         opt_stats,
         station_specs,
+        active_mask=active_mask,
     )
     state["station_overlay_loads"] = overlay_loads
 
@@ -3202,6 +4103,7 @@ def update_map_layers(
             opt_results, opt_stats, station_specs,
             selected_station_idx if isinstance(selected_station_idx, int) else None,
             overlay_loads,
+            active_mask=active_mask,
         ))
 
     return children
@@ -3210,14 +4112,37 @@ def update_map_layers(
 
 @app.callback(
     Output("station-layer", "children"),
+    Input("env-meta", "data"),
     Input("opt-meta", "data"),
+    Input("operation-meta", "data"),
+    Input("spec-mode", "value"),
+    Input("ui-tx-power", "value"),
+    Input("ui-path-loss-exp", "value"),
+    Input("ui-bandwidth-mhz", "value"),
+    Input("ui-sinr-threshold", "value"),
+    Input("ui-max-coord", "value"),
     Input("selected-station", "data"),
     Input("algo-history-store", "data"),
     Input("algo-history-slider", "value"),
     State("station-specs-store", "data"),
     State("session-id", "data"),
 )
-def update_station_markers(opt_meta, selected_station_idx, algo_history, history_frame_idx, station_specs, session_id):
+def update_station_markers(
+    env_meta,
+    opt_meta,
+    operation_meta,
+    spec_mode,
+    ui_tx_power,
+    ui_path_loss_exp,
+    ui_bandwidth_mhz,
+    ui_sinr_threshold,
+    ui_max_coord,
+    selected_station_idx,
+    algo_history,
+    history_frame_idx,
+    station_specs,
+    session_id,
+):
     # 히스토리 재생 중(마지막 프레임 아님)이면 최종 결과 마커 숨김
     if isinstance(algo_history, dict) and algo_history.get("frames"):
         frames = algo_history["frames"]
@@ -3230,8 +4155,41 @@ def update_station_markers(opt_meta, selected_station_idx, algo_history, history
     opt_stats = state.get("opt_stats")
     if not opt_results or not opt_stats:
         return []
-    frame_stats = compute_frame_metrics(state.get("env"), opt_results, station_specs)
+    opt_results, station_specs = live_visualization_state(
+        opt_results,
+        spec_mode,
+        station_specs,
+        ui_tx_power,
+        ui_path_loss_exp,
+        ui_bandwidth_mhz,
+        ui_sinr_threshold,
+        ui_max_coord,
+    )
+    env = state.get("env")
+    operation_results = state.get("operation_results")
+    station_count = len(opt_results.get("stations_geo") or [])
+    active_mask = operation_active_mask_for_frame(
+        operation_results,
+        station_count,
+        int(getattr(env, "dynamic_frame_index", 0)) if env is not None else 0,
+    )
+    if env is not None:
+        df = env_dataframe_for_current_frame(env)
+        _status, operation_loads, _sinr = compute_status_overlay(
+            env,
+            df,
+            opt_results,
+            opt_stats,
+            station_specs,
+            active_mask=active_mask,
+        )
+    else:
+        operation_loads = np.zeros(0)
+    frame_stats = compute_frame_metrics(env, opt_results, station_specs)
     overlay_loads = (
+        operation_loads
+        if active_mask is not None and len(operation_loads) > 0
+        else
         np.asarray(frame_stats.get("station_loads"), dtype=float)
         if frame_stats and frame_stats.get("station_loads") is not None
         else state.get("station_overlay_loads", np.zeros(0))
@@ -3240,32 +4198,86 @@ def update_station_markers(opt_meta, selected_station_idx, algo_history, history
         opt_results, opt_stats, station_specs,
         selected_station_idx if isinstance(selected_station_idx, int) else None,
         overlay_loads,
+        active_mask=active_mask,
     )
 
 
 @app.callback(
     Output({"type": "station-popup-load", "index": ALL}, "children"),
     Input("env-meta", "data"),
+    Input("operation-meta", "data"),
     Input("station-specs-store", "data"),
+    Input("spec-mode", "value"),
+    Input("ui-tx-power", "value"),
+    Input("ui-path-loss-exp", "value"),
+    Input("ui-bandwidth-mhz", "value"),
+    Input("ui-sinr-threshold", "value"),
+    Input("ui-max-coord", "value"),
     State({"type": "station-popup-load", "index": ALL}, "id"),
     State("session-id", "data"),
 )
-def update_station_popup_loads(env_meta, station_specs, load_ids, session_id):
+def update_station_popup_loads(
+    env_meta,
+    operation_meta,
+    station_specs,
+    spec_mode,
+    ui_tx_power,
+    ui_path_loss_exp,
+    ui_bandwidth_mhz,
+    ui_sinr_threshold,
+    ui_max_coord,
+    load_ids,
+    session_id,
+):
     if not load_ids:
         raise PreventUpdate
 
     state = get_session_state(session_id)
     opt_results = state.get("opt_results")
-    metrics = compute_frame_metrics(state.get("env"), opt_results, station_specs)
-    if not metrics:
+    opt_stats = state.get("opt_stats")
+    env = state.get("env")
+    if env is None or not opt_results:
         return [no_update for _ in load_ids]
+    opt_results, station_specs = live_visualization_state(
+        opt_results,
+        spec_mode,
+        station_specs,
+        ui_tx_power,
+        ui_path_loss_exp,
+        ui_bandwidth_mhz,
+        ui_sinr_threshold,
+        ui_max_coord,
+    )
 
-    loads = np.asarray(metrics.get("station_loads", []), dtype=float)
+    station_count = len(opt_results.get("stations_geo") or [])
+    active_mask = operation_active_mask_for_frame(
+        state.get("operation_results"),
+        station_count,
+        int(getattr(env, "dynamic_frame_index", 0)),
+    )
+    if active_mask is not None and opt_stats:
+        df = env_dataframe_for_current_frame(env)
+        _status, loads, _sinr = compute_status_overlay(
+            env,
+            df,
+            opt_results,
+            opt_stats,
+            station_specs,
+            active_mask=active_mask,
+        )
+    else:
+        metrics = compute_frame_metrics(env, opt_results, station_specs)
+        if not metrics:
+            return [no_update for _ in load_ids]
+        loads = np.asarray(metrics.get("station_loads", []), dtype=float)
+
     values = []
     for id_obj in load_ids:
         idx = safe_int(id_obj.get("index") if isinstance(id_obj, dict) else None, -1)
-        load = float(loads[idx]) if 0 <= idx < len(loads) else 0.0
-        values.append(f"Load: {load:.1f}")
+        active = True if active_mask is None or idx < 0 or idx >= len(active_mask) else bool(active_mask[idx])
+        load = float(loads[idx]) if active and 0 <= idx < len(loads) else 0.0
+        status_suffix = f" | {'ON' if active else 'SLEEP/OFF'}" if active_mask is not None else ""
+        values.append(f"Load: {load:.1f}{status_suffix}")
     return values
 
 
@@ -3327,6 +4339,7 @@ def _run_optimization_thread(
     score_mode: str = "traffic",
     spectral_efficiency_mode: str = "shannon",
     weight_scale: float = 1.0,
+    operation_policy: str = DEFAULT_OPERATION_POLICY,
 ) -> None:
     """백그라운드 스레드: 최적화 실행 후 세션 상태에 결과 저장."""
     try:
@@ -3340,6 +4353,7 @@ def _run_optimization_thread(
         start_time = time.time()
         optimizer = get_optimizer(algo)
         range_results = []
+        operation_policy = normalize_operation_policy(operation_policy)
 
         for k_idx, k in enumerate(k_list):
             tx_k = tx_power_for_k(
@@ -3412,6 +4426,7 @@ def _run_optimization_thread(
                     "score_mode": score_mode,
                     "spectral_efficiency_mode": spectral_efficiency_mode,
                     "weight_scale": weight_scale,
+                    "operation_policy": operation_policy,
                 },
                 "stats": stats_out,
             }
@@ -3428,6 +4443,7 @@ def _run_optimization_thread(
         state["range_results"] = range_results
         state["opt_results"] = best_opt
         state["opt_stats"] = best_stats
+        state.pop("operation_results", None)
         state["opt_progress"] = {
             "running": False, "done": True, "error": None,
             "elapsed": elapsed,
@@ -3502,6 +4518,7 @@ def _make_progress_html(algo: str, k_cur: int, k_tot: int,
     State("ui-max-coord", "value"),
     State("score-mode", "value"),
     State("spectral-eff-mode", "value"),
+    State("operation-policy", "value"),
     prevent_initial_call=True,
 )
 def start_optimization_job(
@@ -3511,6 +4528,7 @@ def start_optimization_job(
     spec_mode, station_specs,
     ui_tx_power, ui_path_loss_exp, ui_bandwidth_mhz, ui_sinr_threshold, ui_max_coord,
     score_mode, spectral_eff_mode,
+    operation_policy,
 ):
     if not n_clicks:
         raise PreventUpdate
@@ -3552,12 +4570,14 @@ def start_optimization_job(
               ui_tx_power,
               score_mode or "traffic",
               spectral_eff_mode or "shannon",
-              1.0),
+              1.0,
+              normalize_operation_policy(operation_policy)),
         daemon=True,
     ).start()
 
     state.pop("opt_stats", None)
     state.pop("opt_results", None)
+    state.pop("operation_results", None)
 
     status = _make_progress_html(algo, 1, len(k_list), 0, 0, 0.0)
     return True, False, status, _empty_stats_cards(), version_token(), None
@@ -3635,20 +4655,56 @@ def poll_optimization_progress(n_intervals, session_id):
     Output("stats-panel", "children"),
     Input("opt-meta", "data"),
     Input("env-meta", "data"),
+    Input("operation-meta", "data"),
     Input("station-specs-store", "data"),
+    Input("spec-mode", "value"),
+    Input("ui-tx-power", "value"),
+    Input("ui-path-loss-exp", "value"),
+    Input("ui-bandwidth-mhz", "value"),
+    Input("ui-sinr-threshold", "value"),
+    Input("ui-max-coord", "value"),
     State("session-id", "data"),
 )
-def render_stats_panel(opt_meta, env_meta, station_specs, session_id):
+def render_stats_panel(
+    opt_meta,
+    env_meta,
+    _operation_meta,
+    station_specs,
+    spec_mode,
+    ui_tx_power,
+    ui_path_loss_exp,
+    ui_bandwidth_mhz,
+    ui_sinr_threshold,
+    ui_max_coord,
+    session_id,
+):
     state = get_session_state(session_id)
     env = state.get("env")
     opt_results = state.get("opt_results")
+    opt_results, station_specs = live_visualization_state(
+        opt_results,
+        spec_mode,
+        station_specs,
+        ui_tx_power,
+        ui_path_loss_exp,
+        ui_bandwidth_mhz,
+        ui_sinr_threshold,
+        ui_max_coord,
+    )
     base_stats = state.get("opt_stats")
-    stats = compute_frame_metrics(env, opt_results, station_specs) or base_stats
+    operation_results = state.get("operation_results")
+    station_count = len((opt_results or {}).get("stations_geo") or [])
+    active_mask = operation_active_mask_for_frame(
+        operation_results,
+        station_count,
+        int(getattr(env, "dynamic_frame_index", 0)) if env is not None else 0,
+    )
+    stats = compute_frame_metrics(env, opt_results, station_specs, active_mask=active_mask) or base_stats
 
     if not stats:
         return _empty_stats_cards()
 
-    summary = compute_dynamic_scenario_summary(env, opt_results, station_specs)
+    summary = compute_dynamic_scenario_summary(env, opt_results, station_specs, operation_results)
 
     total_t = float(stats.get("total_traffic", 0))
     cov_t = float(stats.get("covered_traffic", 0))
@@ -3670,6 +4726,13 @@ def render_stats_panel(opt_meta, env_meta, station_specs, session_id):
 
     # 트래픽이 Mbps 단위면 소수, 추상 단위면 정수로 표시
     t_fmt = (lambda v: f"{v:.2f} Mbps") if total_t < 1e4 else (lambda v: f"{int(v)}")
+    if stats.get("operation_active_mask_applied"):
+        station_count_value = (
+            f"{int(stats.get('active_station_count', stats.get('n_stations', 0)))} / "
+            f"{int(stats.get('total_station_count', stats.get('n_stations', 0)))} 활성"
+        )
+    else:
+        station_count_value = f"{stats.get('n_stations', '-')}"
 
     cards = []
 
@@ -3679,7 +4742,7 @@ def render_stats_panel(opt_meta, env_meta, station_specs, session_id):
         metric_card("커버된 면적", f"{int(cov_a)} 격자 ({area_cov_pct:.1f}%)"),
         metric_card("평균 SINR", f"{mean_sinr:.1f} dB" if mean_sinr is not None else "-"),
         metric_card("총 처리량", f"{total_tp:.1f} Mbps"),
-        metric_card("기지국 수", f"{stats.get('n_stations', '-')}"),
+        metric_card("기지국 수", station_count_value),
         metric_card("에너지 효율", energy_eff_str),
     ])
 
@@ -3715,6 +4778,7 @@ def apply_range_selection(n_clicks, selected_k, session_id):
 
     state["opt_results"] = selected["opt_results"]
     state["opt_stats"] = selected["stats"]
+    state.pop("operation_results", None)
 
     return (
         version_token(),
@@ -4312,6 +5376,7 @@ def render_sweep_params_ui(algo):
     State("station-specs-store", "data"),
     State("score-mode", "value"),
     State("spectral-eff-mode", "value"),
+    State("operation-policy", "value"),
     prevent_initial_call=True,
 )
 def start_sweep_job(
@@ -4321,7 +5386,7 @@ def start_sweep_job(
     enabled_values, enabled_ids, min_values, max_values, steps_values,
     ui_tx_power, ui_path_loss_exp, ui_bandwidth_mhz, ui_sinr_threshold, ui_max_coord,
     spec_mode, station_specs,
-    score_mode, spectral_eff_mode,
+    score_mode, spectral_eff_mode, operation_policy,
 ):
     if not n_clicks:
         raise PreventUpdate
@@ -4394,6 +5459,7 @@ def start_sweep_job(
         "score_mode": score_mode or "traffic",
         "spectral_efficiency_mode": spectral_eff_mode or "shannon",
         "weight_scale": 1.0,
+        "operation_policy": normalize_operation_policy(operation_policy),
     }
     state["sweep_progress"] = {
         "running": True, "done": False, "error": None,
@@ -4428,6 +5494,7 @@ def _run_sweep_thread(session_id: str) -> None:
         score_mode = cfg.get("score_mode", "traffic")
         spectral_efficiency_mode = cfg.get("spectral_efficiency_mode", "shannon")
         weight_scale = float(cfg.get("weight_scale", 1.0))
+        operation_policy = normalize_operation_policy(cfg.get("operation_policy"))
 
         optimizer = get_optimizer(algo)
         k_is_swept = any(p["name"] == "__k__" for p in sweep_params)
@@ -4492,6 +5559,7 @@ def _run_sweep_thread(session_id: str) -> None:
                     "stations_geo": stations_df.to_dict("records"),
                     "history": result.history,
                     "prop_params": {**prop, "tx_power_dbm": tx_k.tolist()},
+                    "operation_policy": operation_policy,
                 },
                 "opt_stats": metrics,
             })
@@ -4706,6 +5774,7 @@ def apply_sweep_best(n_clicks, session_id):
     best = max(results, key=lambda r: r["score"])
     state["opt_results"] = best["opt_results"]
     state["opt_stats"] = best["opt_stats"]
+    state.pop("operation_results", None)
 
     combo_str = ", ".join(f"{k}={v:.3g}" for k, v in best["param_combo"].items())
     msg = html.Span(
@@ -4735,6 +5804,7 @@ def apply_sweep_row(selected_rows, session_id):
     chosen = results[idx]
     state["opt_results"] = chosen["opt_results"]
     state["opt_stats"] = chosen["opt_stats"]
+    state.pop("operation_results", None)
 
     combo_str = ", ".join(f"{k}={v:.3g}" for k, v in chosen["param_combo"].items())
     msg = html.Span(
@@ -4779,6 +5849,7 @@ def toggle_sweep_mode_panels(mode):
     State("station-specs-store", "data"),
     State("score-mode", "value"),
     State("spectral-eff-mode", "value"),
+    State("operation-policy", "value"),
     prevent_initial_call=True,
 )
 def start_algo_compare_job(
@@ -4788,7 +5859,7 @@ def start_algo_compare_job(
     n_stations,
     ui_tx_power, ui_path_loss_exp, ui_bandwidth_mhz, ui_sinr_threshold, ui_max_coord,
     spec_mode, station_specs,
-    score_mode, spectral_eff_mode,
+    score_mode, spectral_eff_mode, operation_policy,
 ):
     if not n_clicks:
         raise PreventUpdate
@@ -4855,6 +5926,7 @@ def start_algo_compare_job(
         "score_mode": score_mode or "traffic",
         "spectral_efficiency_mode": spectral_eff_mode or "shannon",
         "weight_scale": 1.0,
+        "operation_policy": normalize_operation_policy(operation_policy),
     }
     state["algo_compare_progress"] = {
         "running": True, "done": False, "error": None,
@@ -4888,6 +5960,7 @@ def _run_algo_compare_thread(session_id: str) -> None:
         score_mode = cfg.get("score_mode", "traffic")
         spectral_efficiency_mode = cfg.get("spectral_efficiency_mode", "shannon")
         weight_scale = float(cfg.get("weight_scale", 1.0))
+        operation_policy = normalize_operation_policy(cfg.get("operation_policy"))
 
         def _build_problem(k_val):
             tx = tx_power_for_k(
@@ -4956,6 +6029,7 @@ def _run_algo_compare_thread(session_id: str) -> None:
                     "score_mode": score_mode,
                     "spectral_efficiency_mode": spectral_efficiency_mode,
                     "weight_scale": weight_scale,
+                    "operation_policy": operation_policy,
                 },
                 "opt_stats": metrics,
             })
@@ -5161,6 +6235,7 @@ def apply_algo_compare_row(selected_rows, session_id):
     chosen = results[idx]
     state["opt_results"] = chosen["opt_results"]
     state["opt_stats"] = chosen["opt_stats"]
+    state.pop("operation_results", None)
 
     msg = html.Span(
         f"적용: {chosen['algo']} | score={chosen['score']:.2f}",
@@ -5189,6 +6264,7 @@ def apply_algo_compare_best(n_clicks, session_id):
     best = max(results, key=lambda r: r["score"])
     state["opt_results"] = best["opt_results"]
     state["opt_stats"] = best["opt_stats"]
+    state.pop("operation_results", None)
 
     msg = html.Span(
         f"적용 완료: {best['algo']}, score={best['score']:.2f}",
