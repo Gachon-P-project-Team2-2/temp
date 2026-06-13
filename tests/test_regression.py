@@ -128,6 +128,11 @@ def test_app_loads(page: Page):
     expect(page.get_by_role("button", name="영역 지정")).to_be_visible()
     expect(page.locator("#main-view-mode input[value='map']")).to_be_checked()
     expect(page.locator("#main-view-mode label").filter(has_text="2")).to_be_visible()
+    center_view = page.locator("#center-view-wrap")
+    expect(center_view).to_be_visible()
+    assert center_view.evaluate("el => getComputedStyle(el).overflowY") in ("auto", "scroll")
+    assert center_view.evaluate("el => getComputedStyle(el).overflowX") == "hidden"
+    assert center_view.evaluate("el => getComputedStyle(el).scrollbarWidth") == "none"
 
 
 def test_analysis_view_switches_from_map(page: Page):

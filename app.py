@@ -2462,7 +2462,7 @@ def algo_sidebar_layout():
                     min=2.0,
                     max=5.0,
                     step=0.1,
-                    value=3.5,
+                    value=3.0,
                     tooltip={"placement": "bottom"},
                 ),
 
@@ -2873,7 +2873,16 @@ def serve_layout():
                                 ],
                             ),
                         ],
-                        style={"flex": "1", "padding": "18px", "minWidth": 0},
+                        id="center-view-wrap",
+                        style={
+                            "flex": "1",
+                            "height": "100vh",
+                            "minWidth": 0,
+                            "overflowX": "hidden",
+                            "overflowY": "auto",
+                            "padding": "18px",
+                            "boxSizing": "border-box",
+                        },
                     ),
 
                     html.Div(id="right-resize-handle", className="resize-handle-v"),
