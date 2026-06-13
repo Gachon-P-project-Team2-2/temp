@@ -117,6 +117,7 @@ def test_app_loads(page: Page):
     expect(page.get_by_text("격자 크기 (m)")).to_be_visible()
     expect(page.get_by_role("heading", name="트래픽 세부 설정")).to_be_visible()
     expect(page.get_by_text("동적 트래픽 모드")).to_be_visible()
+    expect(page.locator("#traffic-pattern")).to_contain_text("random_clusters")
     expect(page.get_by_role("heading", name="알고리즘")).to_be_visible()
     expect(page.get_by_role("heading", name="전파 모델")).to_be_visible()
     expect(page.get_by_role("button", name="영역 지정")).to_be_visible()
@@ -153,6 +154,7 @@ def test_algorithm_selectbox_has_all_optimizers(page: Page):
 
 def test_traffic_pattern_selectbox_has_all_patterns(page: Page):
     """PATTERN_CHOICES의 모든 패턴이 UI에 노출되는지 (목록 직접 참조)."""
+    assert PATTERN_CHOICES[0] == "random_clusters"
     _ensure_expander_open(page, "트래픽 세부 설정")
     page.locator("#traffic-pattern").click()
     for name in PATTERN_CHOICES:

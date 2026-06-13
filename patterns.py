@@ -11,6 +11,7 @@ from typing import Any
 import numpy as np
 
 PATTERN_CHOICES = [
+    "random_clusters",
     "multi_hotspot",
     "center_hotspot",
     "random",
@@ -18,7 +19,6 @@ PATTERN_CHOICES = [
     "gradient",
     "stripe",
     "checkerboard",
-    "random_clusters",
 ]
 
 
@@ -68,7 +68,7 @@ def _add_noise(traffic: np.ndarray, rng: np.random.Generator, params: dict[str, 
 def generate_pattern(
     rows: int,
     cols: int,
-    pattern: str = "multi_hotspot",
+    pattern: str = "random_clusters",
     rng: np.random.Generator | None = None,
     params: dict[str, Any] | None = None,
 ) -> np.ndarray:
