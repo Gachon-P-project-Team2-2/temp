@@ -951,3 +951,722 @@ TypeError: OptimizationResult.__init__() got an unexpected keyword argument 'tot
 2026-06-14 18:28:40 [INFO    ] optimizers.metaheuristics.random_walk — RandomWalk done: best_score=511.7871 elapsed=0.488s
 2026-06-14 18:28:40 [INFO    ] optimizers — opt_thread done: algo=Random Walk best_k=5 score=511.7871 elapsed=0.49s
 2026-06-14 18:28:40 [INFO    ] optimizers — poll: done — best_k=5 score=511.7871 elapsed=0.49s
+2026-06-14 18:54:46 [INFO    ] optimizers — opt_job start: algo=DQN Placement k_list=[5] hp={'episodes': 200, 'steps_per_episode': 30, 'step_size': 50.0, 'random_state': 42}
+2026-06-14 18:54:47 [INFO    ] optimizers.drl.dqn_placement — DQN Placement start: n_stations=5 episodes=200 steps=30 step=50.0 N=1297
+2026-06-14 18:54:47 [INFO    ] optimizers.drl.dqn_placement — DQN Placement device=cpu
+2026-06-14 19:04:08 [INFO    ] optimizers.drl.dqn_placement — DQN Placement done: best_score=687.2879 elapsed=561.299s
+2026-06-14 19:04:08 [INFO    ] optimizers — opt_thread done: algo=DQN Placement best_k=5 score=687.2879 elapsed=562.47s
+2026-06-14 19:04:08 [INFO    ] optimizers — poll: done — best_k=5 score=687.2879 elapsed=562.47s
+2026-06-14 19:53:27 [INFO    ] optimizers — opt_job start: algo=DQN Placement k_list=[5] hp={'episodes': 200, 'steps_per_episode': 30, 'step_size': 50.0, 'random_state': 42}
+2026-06-14 19:53:28 [INFO    ] optimizers.drl.dqn_placement — DQN Placement start: n_stations=5 episodes=200 steps=30 step=50.0 N=909
+2026-06-14 19:53:28 [INFO    ] optimizers.drl.dqn_placement — DQN Placement device=cpu
+2026-06-14 19:53:29 [ERROR   ] optimizers — opt_thread FAILED: algo=DQN Placement
+Traceback (most recent call last):
+  File "/Users/gominjung/Desktop/bs_simulator/app.py", line 4416, in _run_optimization_thread
+    result = optimizer.optimize(problem, n_stations=k,
+             ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/Users/gominjung/Desktop/bs_simulator/optimizers/drl/dqn_placement.py", line 151, in optimize
+    warm_start_stations = snap_stations_to_candidates(km.cluster_centers_, problem)
+                          ^^^^^^^^^^^^^^^^^^^^^^^^^^^
+NameError: name 'snap_stations_to_candidates' is not defined
+
+2026-06-14 20:00:25 [INFO    ] optimizers — opt_job start: algo=DQN Placement k_list=[5] hp={'episodes': 200, 'steps_per_episode': 30, 'step_size': 50.0, 'random_state': 42}
+2026-06-14 20:00:27 [INFO    ] optimizers.drl.dqn_placement — DQN Placement start: n_stations=5 episodes=200 steps=30 step=50.0 N=970
+2026-06-14 20:00:27 [INFO    ] optimizers.drl.dqn_placement — DQN Placement device=cpu
+2026-06-14 20:09:45 [INFO    ] optimizers.drl.dqn_placement — 
+[DQN Reward Scale Report]
+2026-06-14 20:09:45 [INFO    ] optimizers.drl.dqn_placement — delta_covered: mean=0.0000, max=0.0000
+2026-06-14 20:09:45 [INFO    ] optimizers.drl.dqn_placement — max_station_load: mean=160.5132, max=160.5132
+2026-06-14 20:09:45 [INFO    ] optimizers.drl.dqn_placement — DQN Placement done: best_score=688.0343 elapsed=558.576s
+2026-06-14 20:09:45 [INFO    ] optimizers — opt_thread done: algo=DQN Placement best_k=5 score=688.0343 elapsed=559.73s
+2026-06-14 20:09:46 [INFO    ] optimizers — poll: done — best_k=5 score=688.0343 elapsed=559.73s
+2026-06-14 20:10:30 [INFO    ] optimizers — opt_job start: algo=K-Means k_list=[5] hp={'n_init': 10, 'random_state': 42}
+2026-06-14 20:10:30 [INFO    ] optimizers.kmeans — K-Means start: n_stations=5 n_init=10 random_state=42 N=970
+2026-06-14 20:10:30 [INFO    ] optimizers.kmeans — K-Means done: score=688.0343 elapsed=0.024s
+2026-06-14 20:10:30 [INFO    ] optimizers — opt_thread done: algo=K-Means best_k=5 score=688.0343 elapsed=0.03s
+2026-06-14 20:10:31 [INFO    ] optimizers — poll: done — best_k=5 score=688.0343 elapsed=0.03s
+2026-06-14 20:10:43 [INFO    ] optimizers — opt_job start: algo=K-Means k_list=[5] hp={'n_init': 10, 'random_state': 42}
+2026-06-14 20:10:43 [INFO    ] optimizers.kmeans — K-Means start: n_stations=5 n_init=10 random_state=42 N=970
+2026-06-14 20:10:43 [INFO    ] optimizers.kmeans — K-Means done: score=688.0343 elapsed=0.025s
+2026-06-14 20:10:43 [INFO    ] optimizers — opt_thread done: algo=K-Means best_k=5 score=688.0343 elapsed=0.03s
+2026-06-14 20:10:44 [INFO    ] optimizers — poll: done — best_k=5 score=688.0343 elapsed=0.03s
+2026-06-14 20:18:25 [INFO    ] optimizers — opt_job start: algo=DQN Placement k_list=[5] hp={'episodes': 200, 'steps_per_episode': 10, 'step_size': 50.0, 'random_state': 42}
+2026-06-14 20:18:26 [INFO    ] optimizers.drl.dqn_placement — DQN Placement start: n_stations=5 episodes=200 steps=10 step=50.0 N=884
+2026-06-14 20:18:26 [INFO    ] optimizers.drl.dqn_placement — DQN Placement device=cpu
+2026-06-14 20:21:32 [INFO    ] optimizers.drl.dqn_placement — 
+[DQN Reward Scale Report]
+2026-06-14 20:21:32 [INFO    ] optimizers.drl.dqn_placement — delta_covered: mean=0.0000, max=0.0000
+2026-06-14 20:21:32 [INFO    ] optimizers.drl.dqn_placement — max_station_load: mean=79.4334, max=79.4334
+2026-06-14 20:21:32 [INFO    ] optimizers.drl.dqn_placement — DQN Placement done: best_score=263.3141 elapsed=185.553s
+2026-06-14 20:21:32 [INFO    ] optimizers — opt_thread done: algo=DQN Placement best_k=5 score=263.3141 elapsed=186.36s
+2026-06-14 20:21:32 [INFO    ] optimizers — poll: done — best_k=5 score=263.3141 elapsed=186.36s
+2026-06-14 20:22:17 [INFO    ] optimizers — opt_job start: algo=K-Means k_list=[5] hp={'n_init': 10, 'random_state': 42}
+2026-06-14 20:22:17 [INFO    ] optimizers.kmeans — K-Means start: n_stations=5 n_init=10 random_state=42 N=884
+2026-06-14 20:22:17 [INFO    ] optimizers.kmeans — K-Means done: score=263.3141 elapsed=0.022s
+2026-06-14 20:22:17 [INFO    ] optimizers — opt_thread done: algo=K-Means best_k=5 score=263.3141 elapsed=0.02s
+2026-06-14 20:22:18 [INFO    ] optimizers — poll: done — best_k=5 score=263.3141 elapsed=0.02s
+2026-06-14 20:51:23 [INFO    ] optimizers — opt_job start: algo=DQN Placement k_list=[5] hp={'episodes': 20, 'steps_per_episode': 10, 'step_size': 50.0, 'random_state': 42}
+2026-06-14 20:51:24 [INFO    ] optimizers.drl.dqn_placement — DQN Placement start: n_stations=5 episodes=20 steps=10 step=50.0 N=1088
+2026-06-14 20:51:24 [INFO    ] optimizers.drl.dqn_placement — DQN Placement device=cpu
+2026-06-14 20:51:43 [INFO    ] optimizers.drl.dqn_placement — 
+[DQN Reward Scale Report]
+2026-06-14 20:51:43 [INFO    ] optimizers.drl.dqn_placement — delta_covered: mean=0.0000, max=0.0000
+2026-06-14 20:51:43 [INFO    ] optimizers.drl.dqn_placement — max_station_load: mean=10.8680, max=10.8680
+2026-06-14 20:51:43 [INFO    ] optimizers.drl.dqn_placement — DQN Placement done: best_score=27.9740 elapsed=19.387s
+2026-06-14 20:51:43 [INFO    ] optimizers — opt_thread done: algo=DQN Placement best_k=5 score=27.9740 elapsed=20.63s
+2026-06-14 20:51:44 [INFO    ] optimizers — poll: done — best_k=5 score=27.9740 elapsed=20.63s
+2026-06-14 20:52:31 [INFO    ] optimizers — opt_job start: algo=K-Means k_list=[5] hp={'n_init': 10, 'random_state': 42}
+2026-06-14 20:52:31 [INFO    ] optimizers.kmeans — K-Means start: n_stations=5 n_init=10 random_state=42 N=1088
+2026-06-14 20:52:31 [INFO    ] optimizers.kmeans — K-Means done: score=27.9740 elapsed=0.034s
+2026-06-14 20:52:31 [INFO    ] optimizers — opt_thread done: algo=K-Means best_k=5 score=27.9740 elapsed=0.04s
+2026-06-14 20:52:31 [INFO    ] optimizers — poll: done — best_k=5 score=27.9740 elapsed=0.04s
+2026-06-14 21:01:04 [INFO    ] optimizers — opt_job start: algo=DQN Placement k_list=[5] hp={'episodes': 200, 'steps_per_episode': 30, 'step_size': 50.0, 'random_state': 42}
+2026-06-14 21:01:05 [INFO    ] optimizers.drl.dqn_placement — DQN Placement start: n_stations=5 episodes=200 steps=30 step=50.0 N=1321
+2026-06-14 21:01:05 [INFO    ] optimizers.drl.dqn_placement — DQN Placement device=cpu
+2026-06-14 21:10:37 [INFO    ] optimizers.drl.dqn_placement — 
+[DQN Reward Scale Report]
+2026-06-14 21:10:37 [INFO    ] optimizers.drl.dqn_placement — delta_covered: mean=0.0000, max=0.0000
+2026-06-14 21:10:37 [INFO    ] optimizers.drl.dqn_placement — max_station_load: mean=12.5648, max=12.5648
+2026-06-14 21:10:37 [INFO    ] optimizers.drl.dqn_placement — DQN Placement done: best_score=37.3839 elapsed=572.008s
+2026-06-14 21:10:37 [INFO    ] optimizers — opt_thread done: algo=DQN Placement best_k=5 score=37.3839 elapsed=573.16s
+2026-06-14 21:10:37 [INFO    ] optimizers — poll: done — best_k=5 score=37.3839 elapsed=573.16s
+2026-06-14 21:11:51 [INFO    ] optimizers — opt_job start: algo=K-Means k_list=[5] hp={'n_init': 10, 'random_state': 42}
+2026-06-14 21:11:51 [INFO    ] optimizers.kmeans — K-Means start: n_stations=5 n_init=10 random_state=42 N=1321
+2026-06-14 21:11:51 [INFO    ] optimizers.kmeans — K-Means done: score=37.3839 elapsed=0.032s
+2026-06-14 21:11:51 [INFO    ] optimizers — opt_thread done: algo=K-Means best_k=5 score=37.3839 elapsed=0.03s
+2026-06-14 21:11:52 [INFO    ] optimizers — poll: done — best_k=5 score=37.3839 elapsed=0.03s
+2026-06-14 21:25:55 [INFO    ] optimizers — opt_job start: algo=DQN Placement k_list=[5] hp={'episodes': 200, 'steps_per_episode': 30, 'step_size': 50.0, 'random_state': 42}
+2026-06-14 21:25:57 [INFO    ] optimizers.drl.dqn_placement — DQN Placement start: n_stations=5 episodes=200 steps=30 step=50.0 N=1038
+2026-06-14 21:25:57 [INFO    ] optimizers.drl.dqn_placement — DQN Placement device=cpu
+2026-06-14 21:35:00 [INFO    ] optimizers.drl.dqn_placement — DQN Placement done: best_score=495.5172 elapsed=542.992s
+2026-06-14 21:35:00 [INFO    ] optimizers — opt_thread done: algo=DQN Placement best_k=5 score=495.5172 elapsed=544.11s
+2026-06-14 21:35:00 [INFO    ] optimizers — poll: done — best_k=5 score=495.5172 elapsed=544.11s
+2026-06-14 21:35:59 [INFO    ] optimizers — opt_job start: algo=K-Means k_list=[5] hp={'n_init': 10, 'random_state': 42}
+2026-06-14 21:35:59 [INFO    ] optimizers.kmeans — K-Means start: n_stations=5 n_init=10 random_state=42 N=1038
+2026-06-14 21:35:59 [INFO    ] optimizers.kmeans — K-Means done: score=474.0963 elapsed=0.031s
+2026-06-14 21:35:59 [INFO    ] optimizers — opt_thread done: algo=K-Means best_k=5 score=474.0963 elapsed=0.03s
+2026-06-14 21:36:00 [INFO    ] optimizers — poll: done — best_k=5 score=474.0963 elapsed=0.03s
+2026-06-14 21:37:17 [INFO    ] optimizers.kmeans — K-Means start: n_stations=5 n_init=10 random_state=42 N=1038
+2026-06-14 21:37:17 [INFO    ] optimizers.kmeans — K-Means done: score=474.0963 elapsed=0.029s
+2026-06-14 21:37:17 [INFO    ] optimizers.metaheuristics.random_walk — RandomWalk start: n_stations=5 iterations=1000 step_size=50.0 N=1038
+2026-06-14 21:37:17 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=100/1000 best=488.2650 no_improve_streak=1
+2026-06-14 21:37:17 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=200/1000 best=504.3750 no_improve_streak=0
+2026-06-14 21:37:17 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=300/1000 best=509.1518 no_improve_streak=12
+2026-06-14 21:37:17 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=400/1000 best=509.3675 no_improve_streak=94
+2026-06-14 21:37:17 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=500/1000 best=509.6777 no_improve_streak=25
+2026-06-14 21:37:17 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=600/1000 best=509.6777 no_improve_streak=125
+2026-06-14 21:37:17 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=700/1000 best=509.7498 no_improve_streak=59
+2026-06-14 21:37:17 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=800/1000 best=509.7498 no_improve_streak=159
+2026-06-14 21:37:17 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=900/1000 best=509.7498 no_improve_streak=259
+2026-06-14 21:37:17 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=1000/1000 best=509.7498 no_improve_streak=359
+2026-06-14 21:37:17 [INFO    ] optimizers.metaheuristics.random_walk — RandomWalk done: best_score=509.7498 elapsed=0.469s
+2026-06-14 21:37:17 [INFO    ] optimizers.metaheuristics.simulated_annealing — SA start: n_stations=5 iterations=1000 T0=100.0 cooling=0.9950 step=50.0 → final_temp=0.6654 N=1038
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=100/1000 best=426.1592 temp=60.5770
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=200/1000 best=426.1592 temp=36.6958
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=300/1000 best=426.1592 temp=22.2292
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=400/1000 best=426.1592 temp=13.4658
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=500/1000 best=427.1365 temp=8.1572
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=600/1000 best=449.0430 temp=4.9414
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=700/1000 best=481.5996 temp=2.9933
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=800/1000 best=490.1983 temp=1.8133
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=900/1000 best=495.7587 temp=1.0984
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=1000/1000 best=502.2337 temp=0.6654
+2026-06-14 21:37:18 [INFO    ] optimizers.metaheuristics.simulated_annealing — SA done: best_score=502.2337 elapsed=0.425s
+2026-06-14 21:37:18 [WARNING ] optimizers.metaheuristics.tabu_search — TS: tabu_tenure=10 >= n_stations=5 — 금기 리스트가 모든 기지국을 동시에 차단할 수 있습니다. Aspiration Criteria를 자동 적용합니다.
+2026-06-14 21:37:18 [INFO    ] optimizers.metaheuristics.tabu_search — TS start: n_stations=5 iterations=500 step=50.0 tenure=10 N=1038
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=6: aspiration 적용 (tabu idx=2 score=408.8971 > best=385.3898)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=7: aspiration 적용 (tabu idx=0 score=417.4071 > best=408.8971)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=8: aspiration 적용 (tabu idx=1 score=426.3343 > best=417.4071)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=9: aspiration 적용 (tabu idx=3 score=428.8805 > best=426.3343)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=10: aspiration 적용 (tabu idx=3 score=436.3407 > best=428.8805)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=11: aspiration 적용 (tabu idx=1 score=443.2902 > best=436.3407)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=12: aspiration 적용 (tabu idx=0 score=446.0881 > best=443.2902)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=14: aspiration 적용 (tabu idx=1 score=455.8466 > best=446.0881)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=15: aspiration 적용 (tabu idx=1 score=464.6049 > best=455.8466)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=17: aspiration 적용 (tabu idx=2 score=464.9433 > best=464.6180)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=18: aspiration 적용 (tabu idx=1 score=472.7066 > best=464.9433)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=19: aspiration 적용 (tabu idx=1 score=479.0132 > best=472.7066)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=21: aspiration 적용 (tabu idx=3 score=480.4018 > best=479.0132)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=24: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=25: aspiration 적용 (tabu idx=2 score=481.2690 > best=480.9565)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=26: aspiration 적용 (tabu idx=0 score=481.9510 > best=481.2690)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=27: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=28: aspiration 적용 (tabu idx=2 score=482.3972 > best=481.9510)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=30: aspiration 적용 (tabu idx=1 score=487.0957 > best=482.3972)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=32: aspiration 적용 (tabu idx=1 score=490.6204 > best=487.0957)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=34: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=35: aspiration 적용 (tabu idx=1 score=493.1554 > best=490.6204)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=37: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=39: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=40: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=42: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=44: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=47: aspiration 적용 (tabu idx=2 score=493.7022 > best=493.1554)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=48: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=49: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=50: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=52: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=54: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=58: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=59: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=60: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=62: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=64: aspiration 적용 (tabu idx=2 score=494.8292 > best=493.7022)
+2026-06-14 21:37:18 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=67: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=68: aspiration 적용 (tabu idx=2 score=494.8755 > best=494.8292)
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=69: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=70: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=72: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=74: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=77: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=79: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=80: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=82: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=84: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=87: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=89: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=90: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=92: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=94: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=97: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=99: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=100: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=102: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=104: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=107: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=109: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=110: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=112: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=114: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=117: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=119: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=120: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=122: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=124: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=127: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=129: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=130: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=132: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=134: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=137: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=139: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=140: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=142: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=144: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=147: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=149: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=150: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=152: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=154: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=157: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=159: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=160: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=162: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=164: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=167: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=169: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=170: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=172: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=174: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=177: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=179: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:19 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=180: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=182: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=184: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=187: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=189: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=190: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=192: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=194: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=197: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=199: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=200: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=202: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=204: aspiration 적용 (tabu idx=2 score=495.0475 > best=494.8755)
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=207: aspiration 적용 (tabu idx=0 score=495.5625 > best=495.0475)
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=208: aspiration 적용 (tabu idx=3 score=496.2217 > best=495.5625)
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=209: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=210: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=211: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=212: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=216: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=219: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=220: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=221: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=222: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=226: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=229: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=230: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=231: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=232: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=236: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=239: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=240: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=241: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=242: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=246: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=249: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=250: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=251: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=252: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=256: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=259: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=260: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=261: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=262: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=266: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=269: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=270: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=271: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=272: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=276: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=279: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=280: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=281: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=282: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=286: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=289: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=290: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=291: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:20 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=292: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=296: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=299: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=300: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=301: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=302: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=306: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=309: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=310: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=311: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=312: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=316: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=319: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=320: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=321: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=322: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=326: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=329: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=330: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=331: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=332: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=336: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=339: aspiration 적용 (tabu idx=4 score=497.3549 > best=496.2217)
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=340: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=341: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=342: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=343: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=346: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=350: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=351: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=352: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=353: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=356: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=360: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=361: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=362: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=363: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=366: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=370: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=371: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=372: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=373: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=376: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=380: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=381: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=382: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=383: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=386: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=390: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=391: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=392: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=393: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=396: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=400: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=401: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=402: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=403: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:21 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=406: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=410: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=411: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=412: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=413: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=416: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=420: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=421: aspiration 적용 (tabu idx=0 score=497.5357 > best=497.3549)
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=422: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=423: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=426: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=427: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=429: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=432: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=433: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=436: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=437: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=439: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=442: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=443: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=446: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=447: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=449: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=450/500 best=497.5357 active_tabu=5/5 aspiration_total=27
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=452: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=453: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=456: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=457: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=459: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=462: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=463: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=466: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=467: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=469: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=472: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=473: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=476: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=477: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=479: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=482: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=483: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=486: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=487: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=489: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=492: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=493: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=496: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=497: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=499: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:37:22 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=500/500 best=497.5357 active_tabu=5/5 aspiration_total=27
+2026-06-14 21:37:22 [INFO    ] optimizers.metaheuristics.tabu_search — TS done: best_score=497.5357 aspiration_used=27 elapsed=4.375s
+2026-06-14 21:37:22 [INFO    ] optimizers.metaheuristics.genetic — GA start: n_stations=5 pop=40 gen=200 cx=0.90 mut=0.20 elite=2 N=1038
+2026-06-14 21:37:23 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=20/200 best=495.8873 gen_best=495.8873 score_std=0.6600
+2026-06-14 21:37:23 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=40/200 best=508.3140 gen_best=508.3140 score_std=0.6708
+2026-06-14 21:37:23 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=60/200 best=510.7919 gen_best=510.7919 score_std=1.0926
+2026-06-14 21:37:24 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=80/200 best=511.1306 gen_best=511.1306 score_std=1.0275
+2026-06-14 21:37:24 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=100/200 best=511.4090 gen_best=511.4090 score_std=1.0096
+2026-06-14 21:37:24 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=120/200 best=511.4090 gen_best=511.4090 score_std=0.7362
+2026-06-14 21:37:25 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=140/200 best=511.4090 gen_best=511.4090 score_std=1.5350
+2026-06-14 21:37:25 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=160/200 best=511.4090 gen_best=511.4090 score_std=1.8219
+2026-06-14 21:37:26 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=180/200 best=511.4090 gen_best=511.4090 score_std=1.1874
+2026-06-14 21:37:26 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=200/200 best=511.4090 gen_best=511.4090 score_std=1.1710
+2026-06-14 21:37:26 [INFO    ] optimizers.metaheuristics.genetic — GA done: best_score=511.4090 elapsed=3.610s
+2026-06-14 21:37:26 [INFO    ] optimizers.drl.dqn_placement — DQN Placement start: n_stations=5 episodes=200 steps=30 step=50.0 N=1038
+2026-06-14 21:37:26 [INFO    ] optimizers.drl.dqn_placement — DQN Placement device=cpu
+2026-06-14 21:46:03 [INFO    ] optimizers.drl.dqn_placement — DQN Placement done: best_score=495.5172 elapsed=516.880s
+2026-06-14 21:47:48 [INFO    ] optimizers.kmeans — K-Means start: n_stations=5 n_init=10 random_state=42 N=1056
+2026-06-14 21:47:48 [INFO    ] optimizers.kmeans — K-Means done: score=495.0098 elapsed=0.026s
+2026-06-14 21:47:48 [INFO    ] optimizers.metaheuristics.random_walk — RandomWalk start: n_stations=5 iterations=1000 step_size=50.0 N=1056
+2026-06-14 21:47:48 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=100/1000 best=461.2572 no_improve_streak=7
+2026-06-14 21:47:48 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=200/1000 best=499.6837 no_improve_streak=14
+2026-06-14 21:47:48 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=300/1000 best=503.7116 no_improve_streak=32
+2026-06-14 21:47:48 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=400/1000 best=504.4488 no_improve_streak=96
+2026-06-14 21:47:48 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=500/1000 best=504.4488 no_improve_streak=196
+2026-06-14 21:47:48 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=600/1000 best=505.1716 no_improve_streak=11
+2026-06-14 21:47:48 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=700/1000 best=511.5260 no_improve_streak=11
+2026-06-14 21:47:48 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=800/1000 best=519.9145 no_improve_streak=17
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=900/1000 best=522.0750 no_improve_streak=54
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.random_walk — RandomWalk iter=1000/1000 best=526.3049 no_improve_streak=6
+2026-06-14 21:47:49 [INFO    ] optimizers.metaheuristics.random_walk — RandomWalk done: best_score=526.3049 elapsed=0.481s
+2026-06-14 21:47:49 [INFO    ] optimizers.metaheuristics.simulated_annealing — SA start: n_stations=5 iterations=1000 T0=100.0 cooling=0.9950 step=50.0 → final_temp=0.6654 N=1056
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=100/1000 best=298.0276 temp=60.5770
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=200/1000 best=316.1783 temp=36.6958
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=300/1000 best=316.1783 temp=22.2292
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=400/1000 best=346.1715 temp=13.4658
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=500/1000 best=363.9568 temp=8.1572
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=600/1000 best=374.8802 temp=4.9414
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=700/1000 best=389.3837 temp=2.9933
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=800/1000 best=426.7496 temp=1.8133
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=900/1000 best=444.0190 temp=1.0984
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.simulated_annealing — SA iter=1000/1000 best=458.3582 temp=0.6654
+2026-06-14 21:47:49 [INFO    ] optimizers.metaheuristics.simulated_annealing — SA done: best_score=458.3582 elapsed=0.431s
+2026-06-14 21:47:49 [WARNING ] optimizers.metaheuristics.tabu_search — TS: tabu_tenure=10 >= n_stations=5 — 금기 리스트가 모든 기지국을 동시에 차단할 수 있습니다. Aspiration Criteria를 자동 적용합니다.
+2026-06-14 21:47:49 [INFO    ] optimizers.metaheuristics.tabu_search — TS start: n_stations=5 iterations=500 step=50.0 tenure=10 N=1056
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=6: aspiration 적용 (tabu idx=1 score=320.6558 > best=298.8282)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=7: aspiration 적용 (tabu idx=4 score=338.2257 > best=320.6558)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=8: aspiration 적용 (tabu idx=1 score=359.8227 > best=338.2257)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=9: aspiration 적용 (tabu idx=2 score=364.3780 > best=359.8227)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=10: aspiration 적용 (tabu idx=3 score=379.8776 > best=364.3780)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=11: aspiration 적용 (tabu idx=1 score=388.8993 > best=379.8776)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=12: aspiration 적용 (tabu idx=2 score=402.4714 > best=388.8993)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=14: aspiration 적용 (tabu idx=1 score=414.4522 > best=406.7120)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=15: aspiration 적용 (tabu idx=2 score=426.5730 > best=414.4522)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=16: aspiration 적용 (tabu idx=4 score=428.0239 > best=426.5730)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=17: aspiration 적용 (tabu idx=4 score=433.5759 > best=428.0239)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=18: aspiration 적용 (tabu idx=1 score=438.0602 > best=433.5759)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=19: aspiration 적용 (tabu idx=2 score=440.8658 > best=438.0602)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=21: aspiration 적용 (tabu idx=3 score=455.3129 > best=446.7048)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=22: aspiration 적용 (tabu idx=1 score=457.7249 > best=455.3129)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=24: aspiration 적용 (tabu idx=4 score=461.4733 > best=457.7249)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=25: aspiration 적용 (tabu idx=4 score=465.4569 > best=461.4733)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=26: aspiration 적용 (tabu idx=0 score=471.2495 > best=465.4569)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=27: aspiration 적용 (tabu idx=3 score=475.8830 > best=471.2495)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=28: aspiration 적용 (tabu idx=2 score=478.4677 > best=475.8830)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=29: aspiration 적용 (tabu idx=0 score=480.4768 > best=478.4677)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=30: aspiration 적용 (tabu idx=0 score=482.0734 > best=480.4768)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=31: aspiration 적용 (tabu idx=2 score=485.5331 > best=482.0734)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=33: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=34: aspiration 적용 (tabu idx=2 score=487.6192 > best=485.6098)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=36: aspiration 적용 (tabu idx=2 score=489.9064 > best=487.6192)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=38: aspiration 적용 (tabu idx=2 score=492.6985 > best=489.9064)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=39: aspiration 적용 (tabu idx=0 score=493.2840 > best=492.6985)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=40: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=41: aspiration 적용 (tabu idx=3 score=497.0433 > best=493.2840)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=43: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=44: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=46: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=47: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=50: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=53: aspiration 적용 (tabu idx=0 score=499.0044 > best=497.0433)
+2026-06-14 21:47:49 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=54: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=56: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=57: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=59: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=60: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=64: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=66: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=67: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=69: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=70: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=74: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=76: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=77: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=79: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=80: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=84: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=86: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=87: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=89: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=90: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=94: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=96: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=97: aspiration 적용 (tabu idx=3 score=501.1042 > best=499.0044)
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=99: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=100: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=101: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=104: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=106: aspiration 적용 (tabu idx=1 score=505.0783 > best=504.0866)
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=109: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=110: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=111: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=112: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=114: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=119: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=120: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=121: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=122: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=124: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=129: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=130: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=131: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=132: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=134: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=139: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=140: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=141: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=142: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=144: aspiration 적용 (tabu idx=0 score=505.2604 > best=505.0783)
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=149: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=150: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=151: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=152: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=153: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=159: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=160: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=161: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=162: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:50 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=163: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=169: aspiration 적용 (tabu idx=3 score=506.4500 > best=505.7985)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=170: aspiration 적용 (tabu idx=2 score=506.7812 > best=506.4500)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=171: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=172: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=173: aspiration 적용 (tabu idx=0 score=507.2579 > best=506.7812)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=174: aspiration 적용 (tabu idx=1 score=507.8814 > best=507.2579)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=176: aspiration 적용 (tabu idx=0 score=508.0759 > best=507.8814)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=177: aspiration 적용 (tabu idx=0 score=508.6453 > best=508.0759)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=178: aspiration 적용 (tabu idx=1 score=509.8257 > best=508.6453)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=181: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=182: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=183: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=184: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=186: aspiration 적용 (tabu idx=0 score=511.4437 > best=509.8257)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=187: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=191: aspiration 적용 (tabu idx=3 score=512.5317 > best=511.4437)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=192: aspiration 적용 (tabu idx=0 score=513.8528 > best=512.5317)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=193: aspiration 적용 (tabu idx=2 score=514.4352 > best=513.8528)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=194: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=196: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=197: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=199: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=200: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=204: aspiration 적용 (tabu idx=4 score=515.8047 > best=514.4352)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=205: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=206: aspiration 적용 (tabu idx=0 score=517.4579 > best=515.8047)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=207: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=209: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=210: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=212: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=215: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=217: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=219: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=220: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=222: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=225: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=227: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=229: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=230: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=232: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=235: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=237: aspiration 적용 (tabu idx=2 score=517.6994 > best=517.4579)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=239: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=240: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=242: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=243: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=245: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=249: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=250: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=252: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=253: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=255: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=259: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=260: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=262: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=263: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=265: aspiration 적용 (tabu idx=4 score=519.4552 > best=517.6994)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=269: aspiration 적용 (tabu idx=1 score=519.9274 > best=519.4552)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=270: aspiration 적용 (tabu idx=4 score=521.6419 > best=519.9274)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=272: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=273: aspiration 적용 (tabu idx=3 score=524.5117 > best=521.6419)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=274: aspiration 적용 (tabu idx=2 score=524.8668 > best=524.5117)
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=275: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=277: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:51 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=278: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=281: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=282: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=285: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=287: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=288: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=291: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=292: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=295: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=297: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=298: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=300/500 best=524.8668 active_tabu=5/5 aspiration_total=51
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=301: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=302: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=305: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=307: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=308: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=311: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=312: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=315: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=317: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=318: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=321: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=322: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=325: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=327: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=328: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=331: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=332: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=335: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=337: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=338: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=341: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=342: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=345: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=347: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=348: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=350/500 best=524.8668 active_tabu=5/5 aspiration_total=51
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=351: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=352: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=355: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=357: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=358: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=359: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=362: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=365: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=367: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=368: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=369: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=372: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=375: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=377: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=378: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=379: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=382: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=385: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=387: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=388: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:52 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=389: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=392: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=395: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=397: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=398: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=399: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=400/500 best=524.8668 active_tabu=5/5 aspiration_total=51
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=402: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=405: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=407: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=408: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=409: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=412: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=415: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=417: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=418: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=419: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=422: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=425: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=427: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=428: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=429: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=432: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=435: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=437: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=438: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=439: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=442: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=445: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=447: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=448: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=449: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=450/500 best=524.8668 active_tabu=5/5 aspiration_total=51
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=452: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=455: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=457: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=458: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=459: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=462: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=465: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=467: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=468: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=469: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=472: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=475: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=477: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=478: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=479: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=482: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=485: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=487: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=488: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=489: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=492: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=495: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=497: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=498: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=499: 모든 후보 금기 상태 — iteration skip
+2026-06-14 21:47:53 [DEBUG   ] optimizers.metaheuristics.tabu_search — TS iter=500/500 best=524.8668 active_tabu=5/5 aspiration_total=51
+2026-06-14 21:47:53 [INFO    ] optimizers.metaheuristics.tabu_search — TS done: best_score=524.8668 aspiration_used=51 elapsed=4.442s
+2026-06-14 21:47:53 [INFO    ] optimizers.metaheuristics.genetic — GA start: n_stations=5 pop=40 gen=200 cx=0.90 mut=0.20 elite=2 N=1056
+2026-06-14 21:47:54 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=20/200 best=508.7389 gen_best=508.7389 score_std=2.1909
+2026-06-14 21:47:54 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=40/200 best=524.7532 gen_best=524.7532 score_std=0.9620
+2026-06-14 21:47:55 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=60/200 best=524.7991 gen_best=524.7991 score_std=1.0183
+2026-06-14 21:47:55 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=80/200 best=524.7991 gen_best=524.7991 score_std=1.2248
+2026-06-14 21:47:55 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=100/200 best=524.7991 gen_best=524.7991 score_std=0.8547
+2026-06-14 21:47:56 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=120/200 best=524.7991 gen_best=524.7991 score_std=1.2528
+2026-06-14 21:47:56 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=140/200 best=524.7991 gen_best=524.7991 score_std=0.3920
+2026-06-14 21:47:56 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=160/200 best=524.7991 gen_best=524.7991 score_std=0.7588
+2026-06-14 21:47:57 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=180/200 best=524.7991 gen_best=524.7991 score_std=0.9407
+2026-06-14 21:47:57 [DEBUG   ] optimizers.metaheuristics.genetic — GA gen=200/200 best=524.7991 gen_best=524.7991 score_std=1.1412
+2026-06-14 21:47:57 [INFO    ] optimizers.metaheuristics.genetic — GA done: best_score=524.7991 elapsed=3.656s
+2026-06-14 21:47:57 [INFO    ] optimizers.drl.dqn_placement — DQN Placement start: n_stations=5 episodes=200 steps=30 step=50.0 N=1056
+2026-06-14 21:47:57 [INFO    ] optimizers.drl.dqn_placement — DQN Placement device=cpu
+2026-06-14 21:56:33 [INFO    ] optimizers.drl.dqn_placement — DQN Placement done: best_score=523.8563 elapsed=516.183s

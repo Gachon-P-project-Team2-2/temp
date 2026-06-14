@@ -16,7 +16,7 @@ import numpy as np
 from ..base import (
     HyperParam, Optimizer, OptimizationResult, ProblemInput, compute_metrics,
 )
-from ..metaheuristics._shared import calculate_score, clip_stations, random_stations
+from ..metaheuristics._shared import calculate_score, clip_stations, random_stations, snap_stations_to_candidates, get_station_pool
 
 log = logging.getLogger(__name__)
 
@@ -142,16 +142,28 @@ class DQNPlacementOptimizer(Optimizer):
         epsilon_decay = 0.95
         epsilon_min = 0.1
 
-        best_stations = random_stations(n_stations, problem)
+        # --- K-Means Warm Start 적용 ---
+        from sklearn.cluster import KMeans
+        if len(problem.X) >= n_stations:
+            rs = int(random_state) if random_state != -1 else None
+            km = KMeans(n_clusters=n_stations, n_init=10, random_state=rs)
+            km.fit(problem.X, sample_weight=problem.weights)
+            warm_start_stations = snap_stations_to_candidates(km.cluster_centers_, problem)
+        else:
+            warm_start_stations = random_stations(n_stations, problem)
+        # -------------------------------
+
+        best_stations = warm_start_stations.copy()
         best_score = calculate_score(best_stations, problem)
         history = [{"iter": 0, "best_score": best_score, "stations": best_stations.tolist()}]
         if callback is not None:
             callback(0, episodes, best_stations.copy(), best_score)
 
         total_steps = 0
+        scale_stats = {"delta_cov": [], "max_load": []}
 
         for ep in range(1, int(episodes) + 1):
-            current_stations = random_stations(n_stations, problem)
+            current_stations = warm_start_stations.copy()
             current_score = calculate_score(current_stations, problem)
 
             for _ in range(int(steps_per_episode)):
@@ -166,12 +178,20 @@ class DQNPlacementOptimizer(Optimizer):
 
                     next_stations = current_stations.copy()
                     next_stations[k] = self._move_station(next_stations[k], action, step_size)
-                    clip_stations(next_stations, problem)
+                    
+                    # 내부 좌표는 맵 경계까지만 클리핑하여 연속성 유지 (Paralysis 방지)
+                    next_stations[k][0] = np.clip(next_stations[k][0], 0, problem.width_m)
+                    next_stations[k][1] = np.clip(next_stations[k][1], 0, problem.height_m)
 
-                    next_score = calculate_score(next_stations, problem)
+                    # 실제 평가는 후보지에 스냅된 위치로 수행
+                    snapped_next = snap_stations_to_candidates(next_stations, problem)
+                    next_score = calculate_score(snapped_next, problem)
+                    
                     reward = next_score - current_score
 
-                    if action != 4 and np.allclose(current_stations[k], next_stations[k]):
+                    # 스냅된 결과가 제자리걸음이면 페널티
+                    snapped_current = snap_stations_to_candidates(current_stations, problem)
+                    if action != 4 and np.allclose(snapped_current[k], snapped_next[k]):
                         reward -= 0.1
 
                     next_state = get_state(next_stations, k)
@@ -182,7 +202,7 @@ class DQNPlacementOptimizer(Optimizer):
 
                     if current_score > best_score:
                         best_score = current_score
-                        best_stations = current_stations.copy()
+                        best_stations = snapped_next.copy()
 
                     if len(replay_buffer) >= batch_size:
                         batch = random.sample(replay_buffer, batch_size)
@@ -210,6 +230,15 @@ class DQNPlacementOptimizer(Optimizer):
             history.append({"iter": ep, "best_score": best_score, "stations": best_stations.tolist()})
             if callback is not None:
                 callback(ep, episodes, best_stations.copy(), best_score)
+
+        if scale_stats["delta_cov"]:
+            m_delta = np.mean(scale_stats["delta_cov"])
+            mx_delta = np.max(scale_stats["delta_cov"])
+            m_load = np.mean(scale_stats["max_load"])
+            mx_load = np.max(scale_stats["max_load"])
+            log.info("\n[DQN Reward Scale Report]")
+            log.info("delta_covered: mean=%.4f, max=%.4f", m_delta, mx_delta)
+            log.info("max_station_load: mean=%.4f, max=%.4f", m_load, mx_load)
 
         elapsed = time.perf_counter() - t0
         log.info("DQN Placement done: best_score=%.4f elapsed=%.3fs", best_score, elapsed)
