@@ -106,13 +106,25 @@ class DQNPlacementOptimizer(Optimizer):
             state = np.zeros((4, grid_h, grid_w), dtype=np.float32)
             state[0] = traffic_grid
             state[1] = feasible_grid
+            
+            from ..base import _resolve_station_params
+            radii, _ = _resolve_station_params(problem, n_stations)
+            
+            dx = problem.width_m / grid_w
+            dy = problem.height_m / grid_h
+            y_coords = (np.arange(grid_h) + 0.5) * dy
+            x_coords = (np.arange(grid_w) + 0.5) * dx
+            xx, yy = np.meshgrid(x_coords, y_coords)
+            
             for i, (x, y) in enumerate(stations):
-                gx = int(np.clip(x / problem.width_m * grid_w, 0, grid_w - 1))
-                gy = int(np.clip(y / problem.height_m * grid_h, 0, grid_h - 1))
+                r = radii[i]
+                if r <= 0:
+                    r = max(dx, dy)
+                mask = ((xx - x)**2 + (yy - y)**2) <= r**2
                 if i == active_idx:
-                    state[3, gy, gx] = 1.0
+                    state[3][mask] = 1.0
                 else:
-                    state[2, gy, gx] = 1.0
+                    state[2][mask] = 1.0
             return state
 
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -137,6 +149,7 @@ class DQNPlacementOptimizer(Optimizer):
             callback(0, episodes, best_stations.copy(), best_score)
 
         total_steps = 0
+
         for ep in range(1, int(episodes) + 1):
             current_stations = random_stations(n_stations, problem)
             current_score = calculate_score(current_stations, problem)
@@ -157,11 +170,12 @@ class DQNPlacementOptimizer(Optimizer):
 
                     next_score = calculate_score(next_stations, problem)
                     reward = next_score - current_score
+
                     if action != 4 and np.allclose(current_stations[k], next_stations[k]):
                         reward -= 0.1
 
                     next_state = get_state(next_stations, k)
-                    replay_buffer.append((state, action, reward, next_state))
+                    replay_buffer.append((state, action, float(reward), next_state))
 
                     current_stations = next_stations
                     current_score = next_score
@@ -172,11 +186,11 @@ class DQNPlacementOptimizer(Optimizer):
 
                     if len(replay_buffer) >= batch_size:
                         batch = random.sample(replay_buffer, batch_size)
-                        states, actions, rewards, next_states = zip(*batch)
-                        states_t = torch.FloatTensor(np.asarray(states)).to(device)
-                        actions_t = torch.LongTensor(actions).unsqueeze(1).to(device)
-                        rewards_t = torch.FloatTensor(rewards).unsqueeze(1).to(device)
-                        next_states_t = torch.FloatTensor(np.asarray(next_states)).to(device)
+                        states_b, actions_b, rewards_b, next_states_b = zip(*batch)
+                        states_t = torch.FloatTensor(np.asarray(states_b)).to(device)
+                        actions_t = torch.LongTensor(actions_b).unsqueeze(1).to(device)
+                        rewards_t = torch.FloatTensor(rewards_b).unsqueeze(1).to(device)
+                        next_states_t = torch.FloatTensor(np.asarray(next_states_b)).to(device)
 
                         current_q = model(states_t).gather(1, actions_t)
                         with torch.no_grad():
@@ -202,10 +216,19 @@ class DQNPlacementOptimizer(Optimizer):
         if best_score == 0.0:
             log.warning("DQN Placement score=0: 커버리지가 전혀 없습니다.")
 
+        total_cost = None
+        opex_history = None
+        if getattr(problem, "score_mode", "traffic") == "total_cost" or getattr(problem, "_force_total_cost", False):
+            total_cost = -best_score
+            from ..opex_evaluator import evaluate_opex
+            _, opex_history = evaluate_opex(best_stations, problem)
+
+        metrics = compute_metrics(best_stations, problem)
+
         return OptimizationResult(
             stations=best_stations,
             score=best_score,
-            metrics=compute_metrics(best_stations, problem),
+            metrics=metrics,
             history=history,
         )
 
